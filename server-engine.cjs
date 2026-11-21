@@ -5595,14 +5595,15 @@ function normalizeCompactRadarJson(parsed) {
   return parsed;
 }
 
-// Cerebras GPT-OSS-120B Caller Helpers (High-Reasoning & Fast Low-Reasoning Paths)
+// Cerebras GPT-OSS-120B Caller Helpers (ALWAYS high reasoning — there is no low/medium picker)
 
 // ==================== CEREBRAS GPT-OSS-120B WAFER-SCALE HIGH-REASONING CALLER ====================
-function normalizeCerebrasReasoningEffort(rawEffort = 'high') {
-  const clean = String(rawEffort || 'high').trim().toLowerCase();
-  if (clean === 'low') return 'low';
-  if (clean === 'medium' || clean === 'med') return 'medium';
-  return 'high';
+// Cerebras GPT-OSS-120B must ALWAYS run at high reasoning effort. The player can no longer pick
+// low/medium/high, so every incoming effort (legacy localStorage, stale client payload, internal
+// fallback path) is coerced to high here and every pre-pass / ledger / chronicle call is identical.
+const CEREBRAS_FIXED_REASONING_EFFORT = 'high';
+function normalizeCerebrasReasoningEffort() {
+  return CEREBRAS_FIXED_REASONING_EFFORT;
 }
 
 async function callCerebrasGptReasoning({
@@ -5620,7 +5621,7 @@ async function callCerebrasGptReasoning({
     throw new Error('No Cerebras API key (csk-...) configured.');
   }
 
-  const effort = normalizeCerebrasReasoningEffort(reasoningEffort);
+  const effort = CEREBRAS_FIXED_REASONING_EFFORT;
   const effectiveTimeoutMs = Number.isFinite(Number(timeoutMs)) && Number(timeoutMs) > 0
     ? Math.max(4000, Math.min(90000, Math.floor(Number(timeoutMs))))
     : 45000;
@@ -6010,6 +6011,141 @@ function validateGptTurnServer(parsed, priorStage, fullStats, opening) {
     if (isDead(p.uid) && (p.mv || (p.hp !== undefined && !/^0\s*\//.test(p.hp)))) fail('dead NPC cannot act or heal');
   }
   return { s, d };
+}
+
+// ==================== OPUS BOTTOM-OF-BEATS [TURN_JSON] (AUTHORITATIVE END STATE & RADAR) ====================
+// Opus writes the dialogue beats FIRST and then states the end-of-turn world state as the very last
+// line. That final [TURN_JSON] is the authority for the client's state + tactical radar, so a plan the
+// beats contradicted (stale rooms, phantom NPCs, invented landmarks) can never reach the UI. The
+// Cerebras referee plan stays only as a baseline/fallback if Opus's object is missing or unusable.
+const OPUS_STAGE_DISTANCES = new Set(['close', 'near', 'far', 'outside']);
+const OPUS_STAGE_DIRECTION_RX = /^(?:ahead|behind)(?:-left|-right)?$|^(?:left|right)$/;
+const OPUS_STAGE_PIN_FIELDS = ['uid', 'n', 'dist', 'dir', 'lvl', 'hp', 'mp', 'r', 'sp', 'i', 'v', 'st', 'e', 'imp', 'facing_uid', 'is_moving'];
+
+function extractOpusTurnJsonRawServer(rawText = '') {
+  const text = String(rawText || '');
+  if (!text) return null;
+  const marker = /\[TURN_JSON\]\s*:?/gi;
+  let lastIdx = -1;
+  let match;
+  while ((match = marker.exec(text)) !== null) lastIdx = match.index + match[0].length;
+  if (lastIdx === -1) return null;
+  const parsed = extractValidJson(text.slice(lastIdx));
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const compact = parsed.turn_json && typeof parsed.turn_json === 'object' && !Array.isArray(parsed.turn_json)
+    ? parsed.turn_json
+    : parsed;
+  return compact && typeof compact === 'object' && !Array.isArray(compact) ? compact : null;
+}
+
+function sanitizeOpusStagePinsServer(rawPins, { minUid, maxUid, labelKey, knownUids = new Set() }) {
+  if (!Array.isArray(rawPins)) return null;
+  const out = [];
+  const seen = new Set();
+  for (const rawPin of rawPins.slice(0, 64)) {
+    if (!rawPin || typeof rawPin !== 'object' || Array.isArray(rawPin)) continue;
+    const uid = Number(rawPin.uid);
+    if (!Number.isInteger(uid) || uid < minUid || uid > maxUid || seen.has(uid)) continue;
+    const dist = String(rawPin.dist || '').trim().toLowerCase();
+    const dir = String(rawPin.dir || '').trim().toLowerCase();
+    if (!OPUS_STAGE_DISTANCES.has(dist) || !OPUS_STAGE_DIRECTION_RX.test(dir)) continue;
+    const label = String(rawPin[labelKey] || '').trim().slice(0, 120);
+    if (!label && !knownUids.has(uid)) continue;
+    const pin = { uid, dist, dir };
+    if (label) pin[labelKey] = label;
+    for (const field of OPUS_STAGE_PIN_FIELDS) {
+      if (field === 'uid' || field === labelKey || pin[field] !== undefined) continue;
+      if (rawPin[field] !== undefined) pin[field] = rawPin[field];
+    }
+    seen.add(uid);
+    out.push(pin);
+  }
+  return out;
+}
+
+function sanitizeOpusStageServer(rawStage, { knownCastUids = new Set(), knownLandmarkUids = new Set(), knownSoundUids = new Set() } = {}) {
+  if (!rawStage || typeof rawStage !== 'object' || Array.isArray(rawStage)) return null;
+  const zone = String(rawStage.z ?? rawStage.zone ?? rawStage.zone_name ?? '').trim().slice(0, 140);
+  const spot = String(rawStage.spot ?? rawStage.player_spot ?? '').trim().slice(0, 160);
+  if (!zone || !spot || !Array.isArray(rawStage.c)) return null;
+
+  const next = { z: zone, spot };
+  next.c = sanitizeOpusStagePinsServer(rawStage.c, { minUid: 1002, maxUid: 1999, labelKey: 'n', knownUids: knownCastUids }) || [];
+  const castUids = new Set(next.c.map(p => p.uid));
+
+  const landmarks = sanitizeOpusStagePinsServer(rawStage.lm, { minUid: 2000, maxUid: 2999, labelKey: 'n', knownUids: knownLandmarkUids });
+  if (landmarks) next.lm = landmarks;
+  const sounds = sanitizeOpusStagePinsServer(rawStage.snd, { minUid: 3000, maxUid: 3999, labelKey: 'e', knownUids: knownSoundUids });
+  if (sounds) next.snd = sounds;
+
+  if (Array.isArray(rawStage.lv)) {
+    const left = rawStage.lv
+      .map(Number)
+      .filter(uid => Number.isInteger(uid) && knownCastUids.has(uid) && !castUids.has(uid));
+    if (left.length > 0) next.lv = Array.from(new Set(left));
+  }
+  const facing = Number(rawStage.facing_uid);
+  if (Number.isInteger(facing) && facing >= 1002 && facing <= 1999) next.facing_uid = facing;
+  const visualSeed = String(rawStage.v || '').trim().slice(0, 200);
+  if (visualSeed) next.v = visualSeed;
+  const dangerLevel = String(rawStage.dl || '').trim().slice(0, 80);
+  if (dangerLevel) next.dl = dangerLevel;
+  return next;
+}
+
+function resolveOpusAuthoredTurnJsonServer({
+  rawStreamText = '',
+  fallbackTurnJson = null,
+  priorStage = {},
+  fullStats = {},
+  narrator = '',
+  speakerUids = [],
+  opening = false
+}) {
+  const fallback = fallbackTurnJson && typeof fallbackTurnJson === 'object' && fallbackTurnJson.s && fallbackTurnJson.d
+    ? fallbackTurnJson
+    : { s: { z: priorStage.z, spot: priorStage.spot, c: [] }, d: { t: 0 } };
+  // The opening chamber state is server-authored; Opus only writes the opening beats.
+  if (opening) return { turnJson: fallback, source: 'opening-server-authored' };
+
+  const raw = extractOpusTurnJsonRawServer(rawStreamText);
+  if (!raw) return { turnJson: fallback, source: 'cerebras-fallback-missing' };
+
+  // 1. Best case: Opus's object passes the same strict turn validation as the referee plan.
+  try {
+    const validated = validateGptTurnServer(
+      { turn_json: raw, narrator, speaker_uids: speakerUids },
+      priorStage,
+      fullStats,
+      false
+    );
+    return { turnJson: validated, source: 'opus' };
+  } catch (err) {
+    console.warn('[Opus TURN_JSON] strict validation rejected: ' + (err?.message || err));
+  }
+
+  // 2. Radar authority: keep the referee's deltas, but adopt Opus's post-beats stage/radar.
+  const fallbackStage = fallback.s || {};
+  const priorCast = (priorStage.c || []).map(c => Number(Array.isArray(c) ? c[0] : c?.uid)).filter(Number.isInteger);
+  const fallbackCast = (fallbackStage.c || []).map(p => Number(p?.uid)).filter(Number.isInteger);
+  const knownLandmarkUids = [...(priorStage.lm || []), ...(fallbackStage.lm || [])]
+    .map(p => Number(Array.isArray(p) ? p[0] : p?.uid))
+    .filter(Number.isInteger);
+  const knownSoundUids = [...(priorStage.snd || []), ...(fallbackStage.snd || [])]
+    .map(p => Number(Array.isArray(p) ? p[0] : p?.uid))
+    .filter(Number.isInteger);
+  const stage = sanitizeOpusStageServer(raw.s || raw.stage || raw.r || raw.radar, {
+    knownCastUids: new Set([...priorCast, ...fallbackCast]),
+    knownLandmarkUids: new Set(knownLandmarkUids),
+    knownSoundUids: new Set(knownSoundUids)
+  });
+  if (!stage) return { turnJson: fallback, source: 'cerebras-fallback-invalid' };
+
+  const deltas = { ...(fallback.d || {}) };
+  const normZone = z => String(z || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  if (normZone(stage.z) === normZone(priorStage.z)) delete deltas.l;
+  else deltas.l = stage.z;
+  return { turnJson: { s: stage, d: deltas }, source: 'opus-stage' };
 }
 
 // ==================== GPT-OSS TURN RESOLVER ====================
@@ -8265,11 +8401,20 @@ You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras G
   - IN THE MORTAL WORLD (Mw:1): Angels cannot bring full power inside—her wings & halo VANISH and she drops to Lv.1 (75/75 HP, 30/30 MP, only Divine Heal & Animal Talk)! She can only go back to Heaven if UID 1001 alone defeats the Demon King. Under stress she craves alcohol and loudly insists she's an almighty angel while looking completely delusional under Human Supremacy.
 • HUMAN SUPREMACY & NECROMANCY: Humans assume UID 1001 is an ordinary Human unless they witness black magic; Bonus Luck grants weird comedic breaks (except respected female recruits turn out secretly weak with ridiculous flaws). Everyone in Mw:1 has the Real-Time World Newspaper skill.
 
-Output ONLY one line as a strict 2D JSON array: [D]: [[NPC_UID, "emotion emoji", "spoken words", "optional private thought"]] (optionally weaving [1000, "short 3-14 word beat"] between NPC tuples).
-Even with only ONE beat, ALWAYS keep double outer+inner brackets [[...]]. If Allowed speaker UIDs is empty [], output [D]: []. No markdown fences, no commentary, no Beat 0 recap, and no extra tags.`;
+Output EXACTLY two lines, in this order, with no markdown fences, no commentary and no Beat 0 recap:
+1) [D]: [[NPC_UID, "emotion emoji", "spoken words", "optional private thought"]] — optionally weaving [1000, "short 3-14 word beat"] between NPC tuples. Even with only ONE beat, ALWAYS keep double outer+inner brackets [[...]]. If Allowed speaker UIDs is empty [], output [D]: [].
+2) [TURN_JSON]: {"s":{...},"d":{...}} — the AUTHORITATIVE end-of-turn state, emitted at the VERY BOTTOM after your final beat (never before [D]:, never inside a dialogue string).
+
+🔒 [TURN_JSON] IS YOURS (the referee's plan is only a baseline):
+  • Write it LAST, from the beats you actually wrote — where the Protagonist physically is, who is still in the room, who/what they face, and every landmark or sound actually present at the final beat. Never copy a plan your own beats contradicted, and never invent characters, landmarks, sounds, exits or a room change that no beat established.
+  • The radar/stage ("s") is the tactical map the player sees. "s.c" MUST list EVERY character still in the room at the end of the last beat (reuse their uid/dist/dir; add "n" for anyone new), "s.lm" every landmark present, "s.snd" off-stage sounds only, "s.lv" anyone who left, and "s.z"/"s.spot" the exact zone and where the Protagonist stands.
+  • Only these "dist" values are legal: close, near, far, outside. Only these "dir" values are legal: ahead, behind, left, right, ahead-left, ahead-right, behind-left, behind-right.
+  • "d" carries ONLY what changed this turn (omit zero/unchanged fields) and MUST always include "t" (whole elapsed minutes, 0 for a sub-minute exchange).
+
+${getTurnJsonContractBodyServer()}`;
 }
 
-function getTurnJsonContractServer() {
+function getTurnJsonContractBodyServer() {
   return `Required turn_json: {"s":{"z":"Exact Zone Name","spot":"Where the player actually stands","c":[],"lm":[],"snd":[],"lv":[]},"d":{"t":0}}.
 • SCENE STAGE RULES ("s" — Think like a theater stage centered on Protagonist! ZERO coordinates or degrees needed!):
   - "s.spot": Short description of where Protagonist stands right now (e.g. "Right before the Reincarnation Gate").
@@ -8293,8 +8438,11 @@ function getTurnJsonContractServer() {
    - "ns":{"uid":[sanityPct,trustPct,"Stance","ActiveDesire","AutonomousNextIntent","Belief"]},
    - "sc":{"uid":"Concrete ongoing plan with its next step or condition", "another_uid":null}. Keep plans keyed by stable NPC UID and update only when circumstances change. Let NPCs pursue their plans without player permission when enough world time has passed. Use null to retire a completed or abandoned plan. An off-screen decision belongs in d.ev, not in public narration unless its effects are observable.
   - "ds":{"uid":[lvl,"Class/Role","HP/Max","MP/Max","Trauma",["Gear"],["Skills"],"OffScreenActivity",[STR,AGI,INT,VIT],[ATK,DEF,MAG],iqInt,"IQTier","IQBehavior","VisualSeed"]},
-  - "sv":{"uid":"SpeechQuirk"}, "sa":[{"uid":1002,"speaker":"Catgirl Angel","english":"Secret"}], "sr":["secret_id"], "env":"...", "wth":"...", "scars":[], "ev":"...", "alias":"..."
-Return the resolver JSON only. No dialogue tuples or markup.`;
+  - "sv":{"uid":"SpeechQuirk"}, "sa":[{"uid":1002,"speaker":"Catgirl Angel","english":"Secret"}], "sr":["secret_id"], "env":"...", "wth":"...", "scars":[], "ev":"...", "alias":"..."`;
+}
+
+function getTurnJsonContractServer() {
+  return getTurnJsonContractBodyServer() + '\nReturn the resolver JSON only. No dialogue tuples or markup.';
 }
 
 const buildsonnetDialogueSystemPrompt = getStaticAstraSystemPrompt;
@@ -13223,6 +13371,9 @@ function executeThreerouterHttpVariant({
   });
 }
 
+// Opus dialogue writer runs with ZERO reasoning: no thinking budget, no reasoning_effort and no
+// extended-thinking output. Anthropic endpoints get an explicit thinking:{type:'disabled'} plus a
+// field-free fallback variant, so a proxy that rejects the flag can never break the turn.
 async function openThreerouterOpusNoReasoningStream({
   activeKey,
   systemPrompt = '',
@@ -13258,7 +13409,8 @@ async function openThreerouterOpusNoReasoningStream({
               isCacheTier: true,
               body: {
                 model: THREEROUTER_MODEL,
-                max_tokens: 2048,
+                max_tokens: 4096,
+                thinking: { type: 'disabled' },
                 system: [{ type: 'text', text: resolvedSystem, cache_control: { type: 'ephemeral' } }],
                 messages: [{ role: 'user', content: cachedUserBlocks }],
                 stream: true
@@ -13271,7 +13423,20 @@ async function openThreerouterOpusNoReasoningStream({
           timeoutMs: 14000,
           body: {
             model: THREEROUTER_MODEL,
-            max_tokens: 2048,
+            max_tokens: 4096,
+            thinking: { type: 'disabled' },
+            system: resolvedSystem,
+            messages: [{ role: 'user', content: resolvedUserStr }],
+            stream: true
+          }
+        },
+        {
+          label: `Pateway-Anthropic-SSE (${THREEROUTER_MODEL} · Stream · No Thinking Field)`,
+          stream: true,
+          timeoutMs: 14000,
+          body: {
+            model: THREEROUTER_MODEL,
+            max_tokens: 4096,
             system: resolvedSystem,
             messages: [{ role: 'user', content: resolvedUserStr }],
             stream: true
@@ -13283,13 +13448,14 @@ async function openThreerouterOpusNoReasoningStream({
           timeoutMs: 22000,
           body: {
             model: THREEROUTER_MODEL,
-            max_tokens: 2048,
+            max_tokens: 4096,
             system: resolvedSystem,
             messages: [{ role: 'user', content: resolvedUserStr }]
           }
         }
       ]
     : [
+        // OpenAI-compatible endpoints get NO reasoning fields at all: Opus never thinks here.
         {
           label: `Pateway-OpenAI-SSE (${THREEROUTER_MODEL} · Stream)`,
           stream: true,
@@ -13297,7 +13463,7 @@ async function openThreerouterOpusNoReasoningStream({
           body: {
             model: THREEROUTER_MODEL,
             messages: flatMessages,
-            max_tokens: 2048,
+            max_tokens: 4096,
             stream: true
           }
         },
@@ -13308,7 +13474,7 @@ async function openThreerouterOpusNoReasoningStream({
           body: {
             model: THREEROUTER_MODEL,
             messages: flatMessages,
-            max_tokens: 2048,
+            max_tokens: 4096,
             stream: false
           }
         }
@@ -14126,6 +14292,15 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       }
     }
 
+    // Same stage baseline the referee pre-pass audits, reused to validate Opus's bottom-of-beats [TURN_JSON].
+    const priorStageForTurn = {
+      z: compactState.templateLoc,
+      spot: compactState.playerSpot,
+      c: compactState.entArr,
+      lm: compactState.lmArr?.map(([uid, n, dist, dir, st]) => ({ uid, n, dist, dir, st })),
+      snd: compactState.fsArr
+    };
+
     const cerebrasPrePass = await runCerebrasSequentialPrePass({
         isStartCommand,
         cleanDialogue,
@@ -14231,6 +14406,9 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     turnParts.push('Resolved observable scene: ' + JSON.stringify(cerebrasPrePass.narrator));
     turnParts.push('Allowed speaker UIDs: ' + JSON.stringify(cerebrasPrePass.speakerUids));
     turnParts.push('Authorized name reveals: ' + JSON.stringify(cerebrasPrePass.turnJson.d.nr || {}));
+    if (cerebrasPrePass.turnJson) {
+      turnParts.push('[CEREBRAS PLANNED TURN_JSON — BASELINE ONLY. Correct it to match the beats you actually write (final room, cast, facing, landmarks, sounds), then emit the corrected object as the final [TURN_JSON] line.]: ' + JSON.stringify(cerebrasPrePass.turnJson));
+    }
 
     const composedUserTurn = turnParts.length > 0
       ? turnParts.join('\n')
@@ -14502,16 +14680,32 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       },
       beforeSendDone: async (safeWriteSse) => {
         const narrator = immediateNarratorBeat0 || scrubUnintroducedNamesFromNarratorBeatServer(cerebrasPrePass.narrator);
-        const dialogue = validateNpcDialogueServer(accumulatedStreamText, cerebrasPrePass.speakerUids, isStartCommand, narrator);
-        const turnJson = cerebrasPrePass.turnJson;
-        for (const [uid, name] of Object.entries(turnJson.d.nr || {})) {
+        // Opus emits [TURN_JSON] at the very bottom of the beats — cut it before parsing dialogue tuples.
+        const dialogueWireText = String(accumulatedStreamText || '').split(/\[TURN_JSON\]/i)[0];
+        const dialogue = validateNpcDialogueServer(dialogueWireText, cerebrasPrePass.speakerUids, isStartCommand, narrator);
+        // Opus's bottom-of-beats [TURN_JSON] is authoritative for the end-of-turn state & radar;
+        // the Cerebras plan is only the baseline/fallback, so stale rooms and phantom NPCs can't reach the UI.
+        const opusTurnResolution = resolveOpusAuthoredTurnJsonServer({
+          rawStreamText: accumulatedStreamText,
+          fallbackTurnJson: cerebrasPrePass.turnJson,
+          priorStage: priorStageForTurn,
+          fullStats,
+          narrator,
+          speakerUids: cerebrasPrePass.speakerUids,
+          opening: isStartCommand
+        });
+        const turnJson = opusTurnResolution.turnJson;
+        if (opusTurnResolution.source !== 'opus') {
+          console.log('[Opus TURN_JSON] End state source: ' + opusTurnResolution.source);
+        }
+        for (const [uid, name] of Object.entries(turnJson.d?.nr || {})) {
           const exactName = typeof name === 'string' && name.trim();
           if (!exactName || !dialogue.some(row => row[0] === Number(uid) && new RegExp(`(?:^|[^\\p{L}\\p{N}])${exactName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(row[2]))) {
             delete turnJson.d.nr[uid];
           }
         }
         const tuples = [[1000, narrator], ...dialogue];
-        const screenplay = '[D]: ' + JSON.stringify(tuples);
+        const screenplay = '[D]: ' + JSON.stringify(tuples) + '\n[TURN_JSON]: ' + JSON.stringify(turnJson);
         const turnId = await campaignContext.registerResolvedTurn({ turnJson, screenplay, prepassMeta: prepassMetaPayload });
         await safeWriteSse('data: ' + JSON.stringify({ turn_resolution: { id: turnId, turnJson } }) + '\n\n');
         await safeWriteSse('data: ' + JSON.stringify({ token: screenplay }) + '\n\n');
@@ -17244,5 +17438,8 @@ module.exports = {
   initOpusBeatStream,
   finalizeEngineFallbacks,
   describeCredentialState,
-  startStandaloneEngineServer
+  startStandaloneEngineServer,
+  // Opus bottom-of-beats [TURN_JSON] resolution (exposed for direct verification).
+  extractOpusTurnJsonRawServer,
+  resolveOpusAuthoredTurnJsonServer
 };

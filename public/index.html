@@ -4789,21 +4789,7 @@
     box-shadow: 0 0 14px rgba(239, 68, 68, 0.35);
   }
 
-  /* 6. Inline effort toggle + telemetry stance pills + clickable Mercury widget items */
-  .effort-pill-toggle {
-    height: 54px;
-    padding: 0 0.85rem !important;
-    font-size: 0.7rem !important;
-    align-self: flex-end;
-    margin-bottom: 2px;
-    border-color: rgba(103, 232, 249, 0.5) !important;
-    color: #bae6fd !important;
-    white-space: nowrap;
-  }
-  .effort-pill-toggle[data-effort="low"] {
-    border-color: rgba(251, 191, 36, 0.55) !important;
-    color: #fde68a !important;
-  }
+  /* 6. Telemetry stance pills + clickable Mercury widget items */
   .rt-stance-btn {
     padding: 2px 8px;
     font-size: 0.64rem;
@@ -5388,9 +5374,6 @@
               </label>
               <textarea id="playerActionInput" class="chat-textarea" placeholder="e.g., I step toward the blinking pedestal and inspect the Necromancer error..."></textarea>
             </div>
-<button type="button" id="inlineEffortToggleBtn" class="btn effort-pill-toggle" data-effort="high" title="Click to cycle Cerebras gpt-oss-120b Pre-Pass reasoning effort (High / Medium / Low). Pateway claude-opus-5-5 streams dialogue directly!">
-  🔥 High
-</button>
             <button id="sendMessageBtn" class="btn btn-primary send-dual-btn"><span class="btn-text-content">Send ❯</span></button>
           </div>
         </div>
@@ -5517,35 +5500,6 @@
     </div>
   </div>
 
-<!-- CEREBRAS GPT-OSS-120B REASONING EFFORT MODAL -->
-<div class="prompt-modal-backdrop" id="effortSelectionModal">
-  <div class="prompt-modal" style="max-width: 440px; border-color: #38bdf8;">
-    <div class="prompt-modal-header" style="background: rgba(14, 24, 48, 0.96); border-bottom: 1.5px solid #38bdf8;">
-      <h3 style="color:#38bdf8; font-family:'Cinzel',serif; font-size:1.05rem; display:flex; align-items:center; gap:8px;">
-        🧠 Cerebras GPT-OSS-120B Reasoning Effort
-      </h3>
-      <button class="btn btn-sm btn-danger" id="closeEffortModalBtn" style="padding:2px 8px;">✕</button>
-    </div>
-    <div class="prompt-modal-body" style="padding: 1.15rem; gap: 10px;">
-      <p style="font-size:0.83rem; color:#cbd5e1; line-height:1.45;">
-        Select pre-pass reasoning depth for <strong>Cerebras gpt-oss-120b</strong> (Pateway <strong>claude-opus-5-5</strong> writes NPC dialogue directly):
-      </p>
-      <div style="display:flex; flex-direction:column; gap:9px;">
-        <button type="button" class="btn btn-primary" id="selectEffortXhighBtn" style="padding:0.85rem; font-size:0.88rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>🔥 <strong>high</strong> (Default: Maximum Tactical Logic)</span>
-          <span style="font-size:0.7rem; opacity:0.8; font-family:monospace;">Wafer-Scale High</span>
-        </button>
-        <button type="button" class="btn btn-map" id="selectEffortLowBtn" style="padding:0.85rem; font-size:0.88rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>⚡ <strong>low</strong> (Ultra-Light Pre-Pass)</span>
-          <span style="font-size:0.7rem; opacity:0.8; font-family:monospace;">Fastest Pre-Pass</span>
-        </button>
-      </div>
-    </div>
-    <div class="prompt-modal-footer">
-      <button class="btn btn-sm" id="cancelEffortModalBtn">Cancel</button>
-    </div>
-  </div>
-</div>
 <!-- PROTAGONIST TRUE NAME PROMPT MODAL -->
 <div class="prompt-modal-backdrop" id="protagonistNameModal">
   <div class="prompt-modal" style="max-width: 460px; border-color: #fbbf24;">
@@ -16543,9 +16497,8 @@
       }
 
       const aiMsgId = generateMessageIdClient('ai');
-      const currentEffort = ['low', 'medium', 'high'].includes(window.currentTurnReasoningEffort)
-      ? window.currentTurnReasoningEffort
-      : 'high';
+      // Cerebras GPT-OSS-120B always runs at high reasoning effort — there is no effort picker anymore.
+      const currentEffort = 'high';
       const preTurnBgmPrompt = characterFullStats?.partial_stats?.current_bgm_prompt || '';
       const preTurnBgmAudioUrl = bgmManager.currentAudioUrl || '';
       const turnGenIdAtSend = window.campaignGenerationId || 1;
@@ -19276,45 +19229,13 @@
     const welcomeStartBtn = document.getElementById('welcomeStartGameBtn');
     if (welcomeStartBtn) welcomeStartBtn.onclick = sendStartCommand;
 
+    // Cerebras GPT-OSS-120B is always high; sending a turn needs no effort choice.
     window.currentTurnReasoningEffort = 'high';
 
     function promptReasoningEffortAndSend() {
       if (isGenerating) return;
-      const modal = document.getElementById('effortSelectionModal');
-      if (!modal) {
-        window.currentTurnReasoningEffort = 'high';
-        triggerSend();
-        return;
-      }
       sfx.play('click');
-      modal.classList.add('open');
-    }
-
-    const selectEffortXhighBtn = document.getElementById('selectEffortXhighBtn');
-    if (selectEffortXhighBtn) {
-      selectEffortXhighBtn.onclick = () => {
-        document.getElementById('effortSelectionModal')?.classList.remove('open');
-        window.currentTurnReasoningEffort = 'high';
-        triggerSend();
-      };
-    }
-
-    const selectEffortLowBtn = document.getElementById('selectEffortLowBtn');
-    if (selectEffortLowBtn) {
-      selectEffortLowBtn.onclick = () => {
-        document.getElementById('effortSelectionModal')?.classList.remove('open');
-        window.currentTurnReasoningEffort = 'low';
-        triggerSend();
-      };
-    }
-    const closeEffortModalBtn = document.getElementById('closeEffortModalBtn');
-    if (closeEffortModalBtn) {
-      closeEffortModalBtn.onclick = () => document.getElementById('effortSelectionModal')?.classList.remove('open');
-    }
-
-    const cancelEffortModalBtn = document.getElementById('cancelEffortModalBtn');
-    if (cancelEffortModalBtn) {
-      cancelEffortModalBtn.onclick = () => document.getElementById('effortSelectionModal')?.classList.remove('open');
+      triggerSend();
     }
 
     document.getElementById('sendMessageBtn').onclick = promptReasoningEffortAndSend;
@@ -24002,26 +23923,8 @@
      SYNC, SPOILER FIREWALLS, NEWSPAPER PARITY & OPUS-CANONICAL SCENE STATE
      ============================================================ */
   (function installUpgradedClientSystems() {
-    // 1. INLINE CEREBRAS REASONING EFFORT PILL — Defaults to HIGH; Enter sends immediately without modal interruption.
-    const savedEffort = localStorage.getItem('luna_cerebras_effort');
-    window.currentTurnReasoningEffort = ['high', 'medium', 'low'].includes(savedEffort) ? savedEffort : 'high';
-    const effBtn = document.getElementById('inlineEffortToggleBtn');
-    const paintEffort = () => {
-      if (!effBtn) return;
-      const mode = window.currentTurnReasoningEffort;
-      effBtn.dataset.effort = mode === 'low' ? 'low' : 'high';
-      effBtn.textContent = mode === 'high' ? '🔥 High' : (mode === 'medium' ? '🧠 Med' : '⚡ Low');
-    };
-    if (effBtn) {
-      effBtn.onclick = () => {
-        sfx.play('click');
-        const nextMap = { high: 'medium', medium: 'low', low: 'high' };
-        window.currentTurnReasoningEffort = nextMap[window.currentTurnReasoningEffort] || 'high';
-        safeSetItem('luna_cerebras_effort', window.currentTurnReasoningEffort);
-        paintEffort();
-      };
-    }
-    paintEffort();
+    // 1. Cerebras GPT-OSS-120B ALWAYS runs at high reasoning effort — no pill, no low/medium choice.
+    window.currentTurnReasoningEffort = 'high';
     const sendBtnEl = document.getElementById('sendMessageBtn');
     if (sendBtnEl && typeof triggerSend === 'function') sendBtnEl.onclick = () => triggerSend();
     ['playerDialogueInput', 'playerActionInput'].forEach(id => {
