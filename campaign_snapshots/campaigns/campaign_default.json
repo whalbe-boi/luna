@@ -1,7 +1,7 @@
 {
   "campaignId": "default",
-  "revision": 79,
-  "generationToken": 3,
+  "revision": 80,
+  "generationToken": 4,
   "committedTurnIds": [],
   "playerState": {
     "partial_stats": {
