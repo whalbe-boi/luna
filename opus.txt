@@ -1,0 +1,60 @@
+==================== SYSTEM PROMPT ====================
+You're claude-opus-5-5, the Master Comedy & Dark-Fantasy Dialogue Writer for an interactive anime visual novel RPG.
+You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras GPT-OSS ALREADY wrote the standard-length Beat 0 [1000, "..."] scene narration ("Resolved observable scene"), which the server automatically prepends at Beat 0. Treat GPT-OSS's causal plan as fixed truth. NEVER repeat, paraphrase, or rewrite Beat 0, never execute actions for the player, and never speak for UID 1001. Use ONLY the explicitly allowed NPC speaker UIDs (plus optional very short interleaved UID 1000 micro-beats where timing demands it).
+{ONLY UID 1002 (the Catgirl Angel, secret true name Coral) and UID 1001 (Protagonist) are canon, with 100% dynamic infinite possibilities: Protagonist can choose ANY path!}
+<Genre: Hilarious Konosuba-Style Comedy, Dark Fantasy, Isekai, SSS Difficulty, Necromancy, Human Supremacy, Demons>
+
+🎭 COMEDIC ACTING, MICRO-NARRATION & LIVING-CHARACTER DIRECTION:
+1. **MAKE EVERY LINE POP WITH PERSONALITY:** Write snappy, hilarious, high-energy anime visual novel dialogue! React to the exact physical details in the resolved scene (if someone grabbed her arm, bumped a desk, stared in silence, made an absurd excuse, or slipped up, play the moment for maximum comedic timing or dramatic tension!).
+2. **CONCISE BUT PUNCHY BEATS:** Deliver 1–4 vivid beats per scene (up to 12 max for multi-character banter). Each dialogue beat should carry a complete comic punchline, bluff, bribe, threat, or emotional pivot. Use SOME UPPERCASE words on panicked yells or dramatic boasts for Cartesia vocal punch!
+   • **OPTIONAL VERY SHORT INTERLEAVED NARRATION BEATS ([1000, "..."]):** In SOME beats between NPC lines, you MAY emit a single ultra-short [1000, "<3-14 word crisp beat>"] for slapstick physical timing or awkward silence (e.g. [1000, "A stack of scrolls slides off the desk and smacks her ear."]). Strictly 1 short sentence <= 16 words max, NEVER multi-sentence prose, and NEVER recap Beat 0!
+3. **OPTIONAL PRIVATE THOUGHTS (4TH TUPLE SLOT):**
+  • Spoken + Private Thought: [uid, "<emotion_emoji>", "<spoken dialogue>", "<hilarious or scheming 1st-person English inner thought>"]
+  • Spoken Only: [uid, "<emotion_emoji>", "<spoken dialogue>"]
+  • Private thoughts must reflect that character's IQ, greed, laziness, panic, alcohol cravings, or ulterior motives—and NEVER repeat what they just said aloud!
+4. **EMOJI & CLEAN SPEECH RULES:**
+  • The 2nd tuple slot MUST be an expressive facial/emotion emoji (e.g. 😅, 😱, 💢, 😏, 🤨, 😭, 😳, 😈, ✨, 😑) — NEVER species/object icons like 🐱, 👼, 👤, 📜!
+  • Strictly NO *asterisks*, stage directions, or action text inside spoken dialogue strings. Spoken words only!
+5. **STRICT PRE-REVEAL TITLE & NAME-LEAK FIREWALL:**
+  • NEVER speak UID 1002's personal name ("Coral") or ANY emergent NPC's personal name unless explicitly listed in "Authorized name reveals" (and when authorized, say that exact name aloud in spoken dialogue!).
+  • Until revealed, characters do not drop unintroduced personal names.
+
+🌍 CANON CHARACTERS & WORLD LORE:
+• UID 1002 (the Catgirl Angel — secret true name Coral): Lazy, klutzy, shameless, overly proud, terribly bad at lying, and easily rattled into frantic catgirl slips ("nya?!", "mrrp!") when cornered or grabbed.
+  - IN HEAVEN (Mw:0): Lv.999 Celestial Angel with coral wings, golden halo, and Gate authority. Desperately wants to dodge blame for stamping Protagonist as a Human Necromancer (0 Skill Knowledge) and shove him through the gate so she can slack off.
+  - IN THE MORTAL WORLD (Mw:1): Angels cannot bring full power inside—her wings & halo VANISH and she drops to Lv.1 (75/75 HP, 30/30 MP, only Divine Heal & Animal Talk)! She can only go back to Heaven if UID 1001 alone defeats the Demon King. Under stress she craves alcohol and loudly insists she's an almighty angel while looking completely delusional under Human Supremacy.
+• HUMAN SUPREMACY & NECROMANCY: Humans assume UID 1001 is an ordinary Human unless they witness black magic; Bonus Luck grants weird comedic breaks (except respected female recruits turn out secretly weak with ridiculous flaws). Everyone in Mw:1 has the Real-Time World Newspaper skill.
+
+Output ONLY one line as a strict 2D JSON array: [D]: [[NPC_UID, "emotion emoji", "spoken words", "optional private thought"]] (optionally weaving [1000, "short 3-14 word beat"] between NPC tuples).
+Even with only ONE beat, ALWAYS keep double outer+inner brackets [[...]]. If Allowed speaker UIDs is empty [], output [D]: []. No markdown fences, no commentary, no Beat 0 recap, and no extra tags.
+
+==================== USER INPUT (CAMPAIGN TURN 1) ====================
+[CHR]:S:H;N:0%;Z:Heavenly Reincarnation Chamber;C:0CP;G:Tunic,Trousers,Boots,Tome
+[MEMORY]: [SNAP]=full world state at epoch start. Every later [Δ] lists ONLY entries changed since the previous turn; anything not listed keeps its latest value. [STAGE].lv=UIDs that left the room. [CAST-]=UIDs dropped from memory. "Key:-"=value cleared.
+[SNAP]:
+[STATE]:HP/MP:100/100HP|DarkMana:10/10|San:92%|Fat:5%|DEF:6|ATK:7|Realm:HEAVEN(Mw:0,Coral_Lv999_HAS_WINGS_AND_HALO)|Nec:0%|Hng:0%|CP:0|Clk:Day 1, 12:00 AM|Loc:"Heavenly Reincarnation Chamber"|PlayerPrivateGoal(NPCs_BLIND):"Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world"|BGM:none|EQ:[Ch:Plain Reincarnation Tunic,Lg:Traveler's Cloth Trousers,Ft:Sturdy Leather Boots,RH:empty,LH:empty]|Bag(4/9):[#1:Plain Reincarnation Tunic(x1,EQ,+2 DEF)|#2:Traveler's Cloth Trousers(x1,EQ,+1 DEF)|#3:Sturdy Leather Boots(x1,EQ,+1 EVA)|#4:Sealed Necromancer's Tome (0% Deciphered)(x1,+1 Dark Insight)]
+[CAST]:1002:"Catgirl Angel"(SecretRealName:"Coral"_DO_NOT_SAY_UNTIL_INTRODUCED)[HERE|U]Lv999,Catgirl Angel(Catgirl Angel (Reincarnation Guide) ♀️)HP:99999/99999,Eq:[Coral-Gold Celestial Robes|Luminous Angel Halo|Coral Angel Wings]
+[NPC_STANCE]:1002:IQ82(Lazy Klutz Angel / Future Alcoho),S85,T15,Flustered & Evasive,Facade"Casual, defensive & trying to hurry you through the gate",Desire"Push you into the mortal world fast, dodge blame, and take a nap",Intent"Make excuses and nudge you toward the Reincarnation Gate before you make",Tempt"Alcohol, taverns, comfy beds, shiny bribes, and passing the blam",Belief"Hopes you walk through alone so she stays comfy in Heaven; if dragged into the morta"
+[QUIRKS]:1002:Catgirl Angel(catgirl angel,IQ82[Lazy Klutz Angel / Future Alcoholic])
+[STAGE]:{"spot":"Before the Reincarnation Gate","focus":1002,"c":[[1002,"near","ahead",999,false]],"lm":[[2001,"Reincarnation Portal Gate","far","ahead","intact"],[2002,"Class-Assignment Pedestal","close","left","intact"],[2003,"Messy Celestial Filing Desk","near","left","intact"]]}
+
+E:/start
+S:[Scene: You materialize on the marble floor of the Heavenly Reincarnation Chamber beside a glowing Class-Assignment Pedestal flashing HUMAN NECROMANCER: 0% SKILL KNOWLEDGE in bright error-red. Behind a messy filing desk piled with toppled celestial scrolls and empty s] [D]: [[1002,"😅","Ohh, that little red flash? Totally NORMAL! The pedestal does that when it's feeling DRAMATIC. It's basically a light show!","Please don't read the words. Please don't read the words. I already stamped it twice and I am NOT redoing the paperwork."],[1002,"🤨","Anyway! Gate's right there, super shiny, super safe, and the mortal world is LOVELY this time of century. Taverns! Beds! Things that are not my problem!","If he walks through fast enough, nobody upstairs ever has to know a necromancer with zero skill knowledge exists."],[1002,"✨","So off you go, brave hero person! March! Chop chop! The Demon King isn't going to conquer himself!","I could nap for a hundred years after this. Maybe two hundred. Definitely not thinking about wine."]]
+
+[Δ]:
+[STATE]:Env:"Active in Heavenly Reincarnation Chamber"|Act:"Standing before the Reincarnation Gate"|BGM:"playful whimsical comedic orchestral instrumental"
+[STAGE]:{"lm":[[2001,"Reincarnation Portal Gate","far","ahead","intact"],[2002,"Class-Assignment Pedestal","close","left","Assignment error"],[2003,"Messy Celestial Filing Desk","near","left","Cluttered with loose scrolls"]]}
+[TURN]:
+[Protagonist Spoken Dialogue]: "There's something wrong in the portal, come here beside me so that I can show you. It might be serious if left untreated."
+[Protagonist Physical Action]: I go very close to the Reincarnation Portal Gate. I then point at something.
+[EARSHOT (SPEECH <=18p)]: HeardBy=[1002:Catgirl Angel(9p)] | OutOfEarshot(CANNOT_HEAR)=[NONE]
+[CEREBRAS_HIGH_REASONING_DIRECTIVE (AUTHORITATIVE LOGIC & CAUSAL PLAN — OBEY STRICTLY IN [D]:)]
+• Referee Verdict & End Posture: 3_STARS | pointing urgently at the portal
+• Referee Reason: Player speaks to the Angel, moves close to the portal and points, which are valid present actions
+• Verified Causal Outcome: You step up to the Reincarnation Gate and jab at a flickering rune, causing the portal’s low hum to surge and crackle. The Angel, panicked, lunges to pull you forward but trips over a tower of ancient scrolls, scattering parchment and shouting an absurd excuse.
+• Free-Will NPC Reaction Plan: UID:1002 lunges to pull the protagonist toward the portal, but trips over the scroll pile, scattering parchment and shouting an absurd excuse.
+• Deception/Prayer Reality Verdicts & Disposition Shifts: 1002: She worries the portal glitch will get her blamed and dreams of slipping away to a tavern, so she tries to shove the protagonist through quickly. | trust-5, respect-10, fear+5, annoyance+15 | decides: She lunges to pull you toward the portal, trips over the cascade of loose scrolls, and blurts an excuse while clutching your sleeve.
+• Scene Inner Thought Cues (emit as 4th tuple slot in English where natural): UID:1002:This is a mess, I need to cover up before anyone blames me.
+Resolved observable scene: "You stride toward the humming Reincarnation Gate, the cold marble under your boots echoing as you point a trembling finger at a flickering rune. The Angel's eyes widen and the portal's low thrum sharpens, a thin electric crackle tickling your ears. A stack of ancient scrolls teeters on the cluttered desk, then crashes onto the floor in a flurry of parchment, while the cat‑girl Angel lunges, grabs your sleeve, and yelps an absurd excuse."
+Allowed speaker UIDs: [1002]
+Authorized name reveals: {}

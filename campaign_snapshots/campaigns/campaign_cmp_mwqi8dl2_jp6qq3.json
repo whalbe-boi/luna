@@ -1,0 +1,1687 @@
+{
+  "campaignId": "cmp_mwqi8dl2_jp6qq3",
+  "revision": 25,
+  "generationToken": 1,
+  "committedTurnIds": [],
+  "playerState": {
+    "room_changed_this_turn": false,
+    "identity_reveals": {},
+    "allegiance_map": {},
+    "dead_characters": [],
+    "secrets_resolved": [],
+    "bottom_left_notices": [],
+    "deltas": {
+      "hp_delta": 0,
+      "mana_delta": 0,
+      "sanity_delta": 0,
+      "fatigue_delta": 0,
+      "hunger_delta": 0,
+      "currency_delta_cp": 0,
+      "sp_delta": 0,
+      "exp_delta": 0,
+      "necromancy_knowledge_delta": 0,
+      "destiny_debt_delta": 0,
+      "time_delta_min": 0,
+      "audit_paces_delta": 0,
+      "leagues_delta": 0,
+      "in_mortal_world": false,
+      "dead": false,
+      "demon_lord_defeated": false,
+      "transformations": [],
+      "item_mutations": [],
+      "dead_characters": [],
+      "completed_objectives": [],
+      "current_location": "Heavenly Reincarnation Chamber",
+      "current_objective": null,
+      "campaign_phase": null,
+      "title": null,
+      "spells": null,
+      "active_effects": null,
+      "environmental_status": "Active in Heavenly Reincarnation Chamber",
+      "weather": "",
+      "scars_added": [],
+      "off_screen_event": "The Reincarnation Gate hums anxiously while the Catgirl Angel tries to sweep her class-assignment blunder under the rug.",
+      "faction_alert_level": "Calm (Routine Protocol)",
+      "allegiance_map": {},
+      "npc_stance_deltas": {},
+      "dossier_deltas": {},
+      "gifts_to_npcs": {},
+      "species_voice_deltas": null,
+      "first_time_milestones": [],
+      "secrets_added": [],
+      "secrets_resolved": [],
+      "newspaper_articles": [],
+      "items_gained": [],
+      "items_lost": [],
+      "floor_items_added": [],
+      "equipped_items": [],
+      "unequipped_items": [],
+      "factions_delta": [],
+      "skills_gained": [],
+      "achievements_gained": [],
+      "party_updates": [],
+      "rumors_added": [],
+      "active_disguise_alias": "",
+      "bgm": "",
+      "newly_appraised": [],
+      "appraised_lvl1_revealed": false,
+      "outcast_betrayal_revealed": false,
+      "execution_death_triggered": false
+    },
+    "scene_minimap": {
+      "view_mode": "tactical_stage",
+      "zone_name": "Heavenly Reincarnation Chamber",
+      "visual_seed": "",
+      "danger_level": "Celestial Gate",
+      "player_spot": "Right beside the Reincarnation Portal Gate",
+      "player_coords": "[50, 50]",
+      "player_facing_uid": null,
+      "player_facing_name": "",
+      "left_uids": [],
+      "characters": [
+        {
+          "uid": 1002,
+          "name": "Catgirl Angel",
+          "icon": "👼",
+          "dist": "close",
+          "dir": "ahead",
+          "paces": 2,
+          "x": 50,
+          "y": 32,
+          "facing_uid": null,
+          "facing_name": "",
+          "is_moving": false,
+          "species": "Catgirl Angel",
+          "role": "Catgirl Angel (Reincarnation Guide) ♀️",
+          "is_dead": false,
+          "life_status": "ALIVE",
+          "status": "Present in zone",
+          "level": 999,
+          "hp": "99999/99999",
+          "mp": "99999/99999",
+          "atk": 4800,
+          "def": 4500,
+          "mag": 9999,
+          "class_title": "Catgirl Angel (Reincarnation Guide) ♀️",
+          "growth_stage": "Celestial Angel Guide (Lv.999)",
+          "off_screen_activity": "",
+          "visual_seed": "",
+          "description": ""
+        }
+      ],
+      "landmarks": [
+        {
+          "uid": 2001,
+          "name": "Reincarnation Portal Gate",
+          "dist": "far",
+          "dir": "ahead",
+          "paces": 20,
+          "x": 50,
+          "y": 8,
+          "icon": "🏛️",
+          "type": "poi",
+          "is_important": true,
+          "state_tag": "intact",
+          "description": ""
+        },
+        {
+          "uid": 2002,
+          "name": "Class-Assignment Pedestal",
+          "dist": "close",
+          "dir": "left",
+          "paces": 2,
+          "x": 32,
+          "y": 50,
+          "icon": "🏛️",
+          "type": "poi",
+          "is_important": true,
+          "state_tag": "Assignment error",
+          "description": ""
+        },
+        {
+          "uid": 2003,
+          "name": "Messy Celestial Filing Desk",
+          "dist": "near",
+          "dir": "left",
+          "paces": 9,
+          "x": 19,
+          "y": 50,
+          "icon": "🏛️",
+          "type": "poi",
+          "is_important": false,
+          "state_tag": "Cluttered with loose scrolls",
+          "description": ""
+        }
+      ],
+      "footsteps": [],
+      "sound_ripples": []
+    },
+    "partial_stats": {
+      "current_location": "Heavenly Reincarnation Chamber",
+      "current_objective": "Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world",
+      "player_action_status": "pointing urgently at the portal",
+      "hp_necromancy_mana": "100/100 HP | Dark Mana: 10/10",
+      "sanity": "92% (Lucid & Calculating)",
+      "fatigue": "5% (Rested)",
+      "trauma": "Unscathed",
+      "hunger": "0% (Full)",
+      "defense": "6 (Base: 3 + Gear: +3 | Evasion: +1 EVA)",
+      "magic_damage": "7 (0% Skill Knowledge | Dark Mana 10/10 + Gear: +0)",
+      "balance": "0 GP, 0 SP, 0 CP",
+      "day_time": "Day 1, 12:00 AM",
+      "spells": "0 Necromancy Skill Knowledge (Untaught) | Real-Time World Newspaper (Mortal World Universal Skill) | Bonus Luck",
+      "active_effects": "Accidental Human Necromancer (0 Skill Knowledge) | Bonus Luck | Difficulty: SSS",
+      "current_bgm_prompt": "playful whimsical comedic orchestral instrumental",
+      "current_bgm_zone_slug": "",
+      "current_bgm_combat_flag": false,
+      "fairness": "3 Stars (Valid) - pointing urgently at the portal (Player speaks to the Angel, moves close to the portal and points, which are valid present actions)",
+      "nearby_entities": "Catgirl Angel"
+    },
+    "full_stats": {
+      "title": "Accidental Human Necromancer (0 Skill Knowledge)",
+      "living_world": {
+        "world_clock": "Day 1, 12:00 AM",
+        "total_minutes_elapsed": 0,
+        "world_ecosystem": {
+          "total_minutes_elapsed": 0,
+          "hours_elapsed": 0,
+          "world_evolution_tier": "SSS Difficulty · Tier 1 (Demon King Conquest Active)",
+          "demon_king_dominion_progress": "82% of Mortal Continents under Demon King threat | Demon scouts monitor schemes & dark magic",
+          "human_supremacy_kingdoms": "Strict Human Supremacy Laws Active | Non-humans (including Catgirls) mocked or treated as second-class; Black Magic strictly outlawed",
+          "realtime_newspaper_press": "Dormant (Heavenly Separation — Activates upon entering the Mortal World)",
+          "necromancy_progression": "Skill Knowledge: 0% | Monster Scaling +0 Lvls"
+        },
+        "off_screen_event": "The Reincarnation Gate hums anxiously while the Catgirl Angel tries to sweep her class-assignment blunder under the rug.",
+        "faction_alert_level": "Calm (Routine Protocol)",
+        "active_schedules": {
+          "Catgirl Angel": "Fidgeting behind the Celestial Filing Desk, trying to act innocent"
+        },
+        "npc_plans": {}
+      },
+      "quest_dossier": {
+        "incomplete_sub_objectives": [
+          "Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world",
+          "Address the Catgirl Angel over turning you into a Human Necromancer with 0 skill knowledge",
+          "Decide how to handle the Catgirl Angel and the Reincarnation Gate into the mortal SSS world"
+        ],
+        "failed_side_hustles": [],
+        "audit_paces_remaining": 85,
+        "audit_clock": "Chamber progression: 85 steps",
+        "environmental_status": "Active in Heavenly Reincarnation Chamber",
+        "main_objective": "Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world"
+      },
+      "appraised_characters": [],
+      "dead_characters": [],
+      "allegiance_map": {},
+      "dossier_vault": {},
+      "active_secrets": [],
+      "appraised_lvl1_revealed": false,
+      "outcast_betrayal_revealed": false,
+      "awakened_by_death": false,
+      "death_count": 0,
+      "level": 1,
+      "exp": "0/100 (0% Necromancy Knowledge)",
+      "in_mortal_world": false,
+      "coral_mortal_nerfed": false,
+      "necromancy_knowledge_pct": 0,
+      "newspaper_feed": [],
+      "unassigned_sp": 0,
+      "destiny_debt": 0,
+      "max_pouch_slots": 9,
+      "party_roster": [
+        {
+          "name": "Whalberg",
+          "hp": "100/100",
+          "mana": "10/10",
+          "species": "Human (Hidden Necromancer)",
+          "role": "Accidental Human Necromancer (0 Skill Knowledge)",
+          "status": "Standing before the Reincarnation Gate"
+        }
+      ],
+      "campaign_phase": "Prologue: Heavenly Reincarnation Blunder (SSS Difficulty)",
+      "rumor_mill": [],
+      "perceptions": {
+        "Catgirl Angel": {
+          "uid": 1002,
+          "iq": "IQ 82 (Lazy Klutz Angel / Future Alcoholic)",
+          "sanity_pct": 85,
+          "sanity": "85% (Lucid)",
+          "outward_facade": "Casual, defensive & trying to hurry you through the gate",
+          "witnessed": "Clumsily stamped Human Necromancer (0 Skill Knowledge) instead of Hero",
+          "believes": "Hopes you walk through alone so she stays comfy in Heaven; if dragged into the mortal world, she loses her wings/halo, drops to Lv.1, and can only return home if you alone defeat the Demon King!",
+          "suspicion_level": "Flustered & Evasive",
+          "trust_score": "15%",
+          "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
+          "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
+          "hidden_agenda": "Sweep the Necromancer blunder under the rug and avoid getting dragged into the SSS mortal world.",
+          "opus_locked": false,
+          "is_fresh_this_turn": false,
+          "updated_at_clock": "Day 1, 12:00 AM"
+        }
+      },
+      "demon_king_odyssey": {
+        "campaign_act": "Prologue: Heavenly Reincarnation Chamber",
+        "distance_to_citadel_leagues": 600,
+        "demon_generals_defeated": "0/6",
+        "world_threat_level": "SSS (Almost Conquered by the Demon King)"
+      },
+      "factions": [
+        {
+          "name": "Heavenly Reincarnation Bureau",
+          "standing": "0"
+        },
+        {
+          "name": "Catgirl Angel (Assigned Guide)",
+          "standing": "-25"
+        }
+      ],
+      "skills_tree": [
+        {
+          "id": "sk_necromancy_zero",
+          "name": "Human Necromancer (0 Skill Knowledge)",
+          "type": "Accidental Role",
+          "cost": "Dark Mana",
+          "desc": "A lazy Catgirl Angel accidentally stamped Necromancer instead of Hero with 0 spell knowledge. You hold a 10/10 Dark Mana pool with zero learned spells yet."
+        },
+        {
+          "id": "sk_bonus_luck",
+          "name": "Bonus Luck",
+          "type": "Passive Anomaly",
+          "cost": "0",
+          "desc": "An anomalous passive blessing granting uncanny fortunate coincidences and narrow escapes. Any hidden caveats remain unknown."
+        },
+        {
+          "id": "sk_realtime_newspaper",
+          "name": "Real-Time World Newspaper",
+          "type": "Universal Mortal World Skill",
+          "cost": "Active (Universal Mortal Skill)",
+          "desc": "Innate broadcast skill shared by everyone inside the mortal world. Streams Demon King frontlines, Human Supremacy decrees, and absurd heroine gossip in real time."
+        }
+      ],
+      "achievements": [],
+      "pouch_inventory": [
+        {
+          "slot": 1,
+          "icon": "🥋",
+          "name": "Plain Reincarnation Tunic",
+          "qty": 1,
+          "desc": "Simple human traveler tunic issued by the Reincarnation Gate (+2 DEF).",
+          "rarity": "Common",
+          "worth": "1 SP",
+          "stat_bonus": "+2 DEF",
+          "equip_slot": "chest",
+          "equipped_slot": "chest",
+          "equipped": true,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        },
+        {
+          "slot": 2,
+          "icon": "👖",
+          "name": "Traveler's Cloth Trousers",
+          "qty": 1,
+          "desc": "Durable dark trousers suited for rough mortal roads (+1 DEF).",
+          "rarity": "Common",
+          "worth": "1 SP",
+          "stat_bonus": "+1 DEF",
+          "equip_slot": "legs",
+          "equipped_slot": "legs",
+          "equipped": true,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        },
+        {
+          "slot": 3,
+          "icon": "👟",
+          "name": "Sturdy Leather Boots",
+          "qty": 1,
+          "desc": "Practical leather boots for quick escapes in an SSS-difficulty realm (+1 EVA).",
+          "rarity": "Common",
+          "worth": "1 SP",
+          "stat_bonus": "+1 EVA",
+          "equip_slot": "feet",
+          "equipped_slot": "feet",
+          "equipped": true,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        },
+        {
+          "slot": 4,
+          "icon": "📖",
+          "name": "Sealed Necromancer's Tome (0% Deciphered)",
+          "qty": 1,
+          "desc": "Unreadable dark-parchment manual stuffed into your pocket during the Reincarnation blunder. Keep hidden from Human Supremacy patrols!",
+          "rarity": "Uncommon",
+          "worth": "0 CP",
+          "stat_bonus": "+1 Dark Insight",
+          "equip_slot": "hand",
+          "equipped_slot": null,
+          "equipped": false,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        },
+        {
+          "slot": 5,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        },
+        {
+          "slot": 6,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        },
+        {
+          "slot": 7,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        },
+        {
+          "slot": 8,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        },
+        {
+          "slot": 9,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false,
+          "enchantments": [],
+          "slapstick_effect": null,
+          "category": "misc"
+        }
+      ],
+      "held_hand_currency": null,
+      "equipped_loadout": {
+        "head": null,
+        "chest": {
+          "slot": 1,
+          "name": "Plain Reincarnation Tunic",
+          "icon": "🥋",
+          "stat_bonus": "+2 DEF",
+          "rarity": "Common",
+          "equip_slot": "chest"
+        },
+        "legs": {
+          "slot": 2,
+          "name": "Traveler's Cloth Trousers",
+          "icon": "👖",
+          "stat_bonus": "+1 DEF",
+          "rarity": "Common",
+          "equip_slot": "legs"
+        },
+        "feet": {
+          "slot": 3,
+          "name": "Sturdy Leather Boots",
+          "icon": "👟",
+          "stat_bonus": "+1 EVA",
+          "rarity": "Common",
+          "equip_slot": "feet"
+        },
+        "right_hand": null,
+        "left_hand": null
+      },
+      "recent_equipment_actions": [],
+      "recent_gambling_actions": [],
+      "recent_player_activities": [],
+      "pending_first_time_discoveries": [],
+      "player_true_name": "Whalberg"
+    },
+    "world_map_nodes": [],
+    "dynamic_species_registry": {},
+    "updated_codex_iq": {}
+  },
+  "playerStateIsPlaceholder": false,
+  "playerTrueName": "Whalberg",
+  "historySnapshots": {
+    "msg_1795271393942_1_rph89_user": {
+      "playerState": {
+        "partial_stats": {
+          "hp_necromancy_mana": "100/100 HP | Dark Mana: 10/10",
+          "sanity": "92% (Lucid)",
+          "fatigue": "5% (Rested)",
+          "trauma": "Unscathed",
+          "hunger": "0% (Full)",
+          "defense": "6 (Base: 3 + Gear: +3 | Evasion: +1 EVA)",
+          "magic_damage": "7 (0% Skill Knowledge | Dark Mana 10/10 + Gear: +0)",
+          "balance": "0 GP, 0 SP, 0 CP",
+          "day_time": "Day 1, 12:00 AM",
+          "nearby_entities": "Catgirl Angel",
+          "current_location": "Heavenly Reincarnation Chamber",
+          "current_objective": "Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world",
+          "current_bgm_prompt": "",
+          "spells": "0 Necromancy Skill Knowledge (Untaught) | Real-Time World Newspaper (Mortal World Universal Skill) | Bonus Luck",
+          "active_effects": "Accidental Human Necromancer (0 Skill Knowledge) | Bonus Luck | Difficulty: SSS",
+          "fairness": "3 Stars: Valid (SSS Hardcore Realism)",
+          "player_action_status": "Inactive (Idle — No Active Action)"
+        },
+        "full_stats": {
+          "title": "Accidental Human Necromancer (0 Skill Knowledge)",
+          "in_mortal_world": false,
+          "coral_mortal_nerfed": false,
+          "necromancy_knowledge_pct": 0,
+          "sanity_pct": 92,
+          "level": 1,
+          "exp": "0/100 (0% Necromancy Knowledge)",
+          "unassigned_sp": 0,
+          "destiny_debt": 0,
+          "max_pouch_slots": 9,
+          "currency": {
+            "gp": 0,
+            "sp": 0,
+            "cp": 0
+          },
+          "newspaper_feed": [],
+          "player_true_name": "Whalberg",
+          "active_disguise_alias": "",
+          "party_roster": [
+            {
+              "name": "Whalberg",
+              "hp": "100/100",
+              "mana": "10/10",
+              "species": "Human (Necromancer)",
+              "role": "Accidental Human Necromancer (0 Skill Knowledge)",
+              "status": "Standing before the Reincarnation Gate"
+            }
+          ],
+          "campaign_phase": "Prologue: Heavenly Reincarnation Blunder (SSS Difficulty)",
+          "demon_king_odyssey": {
+            "campaign_act": "Prologue: Heavenly Reincarnation Chamber",
+            "distance_to_citadel_leagues": 600,
+            "demon_generals_defeated": "0/6",
+            "world_threat_level": "SSS (Almost Conquered by the Demon King)"
+          },
+          "perceptions": {
+            "Catgirl Angel": {
+              "iq": "IQ 82 (Lazy Klutz Angel / Future Alcoholic) | Facade: \"Nothing happened, go through the gate!\"",
+              "outward_facade": "Casual, defensive & trying to hurry you through the gate",
+              "witnessed": "Clumsily stamped Human Necromancer (0 Skill Knowledge) instead of Hero",
+              "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
+              "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
+              "believes": "Hopes you walk through alone so she stays comfy in Heaven; if dragged into the mortal world, she loses her wings/halo, drops to Lv.1, and can only return home if you alone defeat the Demon King!",
+              "suspicion_level": "Flustered & Evasive",
+              "trust_score": "15%",
+              "hidden_agenda": "Sweep the Necromancer blunder under the rug and avoid getting dragged into the SSS mortal world."
+            }
+          },
+          "rumor_mill": [],
+          "living_world": {
+            "world_clock": "Day 1, 12:00 AM",
+            "off_screen_event": "The Reincarnation Gate hums anxiously while the Catgirl Angel tries to sweep her class-assignment blunder under the rug.",
+            "active_schedules": {
+              "Catgirl Angel": "Fidgeting behind the Celestial Filing Desk, trying to act innocent"
+            }
+          },
+          "skills_tree": [
+            {
+              "id": "sk_necromancy_zero",
+              "name": "Human Necromancer (0 Skill Knowledge)",
+              "type": "Accidental Role",
+              "cost": "Dark Mana",
+              "desc": "A lazy Catgirl Angel accidentally stamped Necromancer instead of Hero with 0 spell knowledge. You hold a 10/10 Dark Mana pool with zero learned spells yet."
+            },
+            {
+              "id": "sk_bonus_luck",
+              "name": "Bonus Luck",
+              "type": "Passive Anomaly",
+              "cost": "0",
+              "desc": "An anomalous passive blessing granting uncanny fortunate coincidences and narrow escapes. Any hidden caveats remain unknown."
+            },
+            {
+              "id": "sk_realtime_newspaper",
+              "name": "Real-Time World Newspaper",
+              "type": "Universal Mortal World Skill",
+              "cost": "Active (Universal Mortal Skill)",
+              "desc": "Innate broadcast skill shared by everyone inside the mortal world. Streams Demon King frontlines, Human Supremacy decrees, and absurd heroine gossip in real time."
+            }
+          ],
+          "factions": [
+            {
+              "name": "Heavenly Reincarnation Bureau",
+              "standing": "0"
+            },
+            {
+              "name": "Catgirl Angel (Assigned Guide)",
+              "standing": "-25"
+            }
+          ],
+          "available_locations": [
+            "Heavenly Reincarnation Chamber",
+            "Oakhaven Border Outpost"
+          ],
+          "available_missions": [
+            "Confront the Catgirl Angel over your Necromancer class",
+            "Survive the SSS world and learn Necromancy in secret"
+          ],
+          "quest_dossier": {
+            "incomplete_sub_objectives": [
+              "Address the Catgirl Angel over turning you into a Human Necromancer with 0 skill knowledge",
+              "Decide how to handle the Catgirl Angel and the Reincarnation Gate into the mortal SSS world"
+            ],
+            "failed_side_hustles": [],
+            "audit_paces_remaining": 85,
+            "audit_clock": "SSS Difficulty Living World Active"
+          },
+          "recent_equipment_actions": [],
+          "equipped_loadout": {
+            "head": null,
+            "chest": {
+              "slot": 1,
+              "name": "Plain Reincarnation Tunic",
+              "icon": "🥋",
+              "stat_bonus": "+2 DEF",
+              "rarity": "Common",
+              "equip_slot": "chest"
+            },
+            "legs": {
+              "slot": 2,
+              "name": "Traveler's Cloth Trousers",
+              "icon": "👖",
+              "stat_bonus": "+1 DEF",
+              "rarity": "Common",
+              "equip_slot": "legs"
+            },
+            "feet": {
+              "slot": 3,
+              "name": "Sturdy Leather Boots",
+              "icon": "👟",
+              "stat_bonus": "+1 EVA",
+              "rarity": "Common",
+              "equip_slot": "feet"
+            },
+            "right_hand": null,
+            "left_hand": null
+          },
+          "pouch_inventory": [
+            {
+              "slot": 1,
+              "icon": "🥋",
+              "name": "Plain Reincarnation Tunic",
+              "qty": 1,
+              "desc": "Simple human traveler tunic issued by the Reincarnation Gate (+2 DEF).",
+              "rarity": "Common",
+              "worth": "1 SP",
+              "stat_bonus": "+2 DEF",
+              "equip_slot": "chest",
+              "equipped_slot": "chest",
+              "equipped": true
+            },
+            {
+              "slot": 2,
+              "icon": "👖",
+              "name": "Traveler's Cloth Trousers",
+              "qty": 1,
+              "desc": "Durable dark trousers suited for rough mortal roads (+1 DEF).",
+              "rarity": "Common",
+              "worth": "1 SP",
+              "stat_bonus": "+1 DEF",
+              "equip_slot": "legs",
+              "equipped_slot": "legs",
+              "equipped": true
+            },
+            {
+              "slot": 3,
+              "icon": "👟",
+              "name": "Sturdy Leather Boots",
+              "qty": 1,
+              "desc": "Practical leather boots for quick escapes in an SSS-difficulty realm (+1 EVA).",
+              "rarity": "Common",
+              "worth": "1 SP",
+              "stat_bonus": "+1 EVA",
+              "equip_slot": "feet",
+              "equipped_slot": "feet",
+              "equipped": true
+            },
+            {
+              "slot": 4,
+              "icon": "📖",
+              "name": "Sealed Necromancer's Tome (0% Deciphered)",
+              "qty": 1,
+              "desc": "Unreadable dark-parchment manual stuffed into your pocket during the Reincarnation blunder. Keep hidden from Human Supremacy patrols!",
+              "rarity": "Uncommon",
+              "worth": "0 CP",
+              "stat_bonus": "+1 Dark Insight",
+              "equip_slot": "hand",
+              "equipped_slot": null,
+              "equipped": false
+            },
+            {
+              "slot": 5,
+              "icon": "",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false
+            },
+            {
+              "slot": 6,
+              "icon": "",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false
+            },
+            {
+              "slot": 7,
+              "icon": "",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false
+            },
+            {
+              "slot": 8,
+              "icon": "",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false
+            },
+            {
+              "slot": 9,
+              "icon": "",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false
+            }
+          ],
+          "held_hand_currency": null
+        },
+        "scene_minimap": {
+          "view_mode": "tactical_stage",
+          "zone_name": "Heavenly Reincarnation Chamber",
+          "danger_level": "Celestial Gate (SSS Ahead)",
+          "player_spot": "Before the Reincarnation Gate",
+          "player_coords": "[50, 50]",
+          "landmarks": [
+            {
+              "uid": 2001,
+              "name": "Reincarnation Portal Gate",
+              "icon": "🌀",
+              "dist": "far",
+              "dir": "ahead",
+              "paces": 20,
+              "x": 50,
+              "y": 8,
+              "type": "door",
+              "is_important": true,
+              "description": "Swirling golden gate descending straight into the SSS mortal world"
+            },
+            {
+              "uid": 2002,
+              "name": "Class-Assignment Pedestal",
+              "icon": "🔮",
+              "dist": "close",
+              "dir": "left",
+              "paces": 2,
+              "x": 31,
+              "y": 50,
+              "type": "poi",
+              "is_important": true,
+              "description": "Glowing celestial pedestal blinking 'HUMAN NECROMANCER (0% SKILL KNOWLEDGE)' in error red"
+            },
+            {
+              "uid": 2003,
+              "name": "Messy Celestial Filing Desk",
+              "icon": "📜",
+              "dist": "near",
+              "dir": "left",
+              "paces": 9,
+              "x": 19,
+              "y": 50,
+              "type": "poi",
+              "is_important": false,
+              "description": "Cluttered desk piled with spilled ink, snack wrappers, and torn reincarnation scrolls"
+            }
+          ],
+          "characters": [
+            {
+              "uid": 1002,
+              "name": "Catgirl Angel",
+              "icon": "👼",
+              "dist": "near",
+              "dir": "ahead",
+              "paces": 9,
+              "x": 50,
+              "y": 19,
+              "species": "Catgirl Angel",
+              "role": "Catgirl Angel (Reincarnation Guide) ♀️",
+              "status": "Standing beside the Reincarnation Gate",
+              "level": 999,
+              "hp": "99999/99999",
+              "mp": "99999/99999",
+              "description": "Coral-haired Catgirl Angel with luminous golden halo and coral angel wings",
+              "atk": 4800,
+              "def": 4500,
+              "mag": 9999,
+              "class_title": "Catgirl Angel (Reincarnation Guide) ♀️",
+              "growth_stage": "Celestial Angel Guide (Lv.999)",
+              "off_screen_activity": "Coral-haired Catgirl Angel with luminous golden halo and coral angel wings"
+            }
+          ],
+          "footsteps": []
+        }
+      },
+      "ledger": {
+        "npc_registry": {},
+        "uid_registry": {
+          "npc": {},
+          "landmark": {},
+          "footstep": {}
+        },
+        "perceptions_vault": {},
+        "dossier_vault": {},
+        "appraised_uids": [],
+        "allegiance_map": {},
+        "active_secrets_vault": {},
+        "unknown_to_real_map": {},
+        "introduced_names": [],
+        "in_mortal_world": false,
+        "location_states": {},
+        "scars_by_location": {},
+        "weather_by_location": {},
+        "odyssey": {
+          "act_id": "prologue",
+          "generals": [],
+          "generals_defeated": 0,
+          "leagues": 600,
+          "doom_minutes": 0,
+          "flags": {}
+        }
+      },
+      "codex": {}
+    },
+    "msg_1795271537245_3_2sn3i_user": {
+      "playerState": {
+        "room_changed_this_turn": false,
+        "identity_reveals": {},
+        "allegiance_map": {},
+        "dead_characters": [],
+        "secrets_resolved": [],
+        "bottom_left_notices": [],
+        "deltas": {
+          "hp_delta": 0,
+          "mana_delta": 0,
+          "sanity_delta": 0,
+          "fatigue_delta": 0,
+          "hunger_delta": 0,
+          "currency_delta_cp": 0,
+          "sp_delta": 0,
+          "exp_delta": 0,
+          "necromancy_knowledge_delta": 0,
+          "destiny_debt_delta": 0,
+          "time_delta_min": 0,
+          "audit_paces_delta": 0,
+          "leagues_delta": 0,
+          "in_mortal_world": false,
+          "dead": false,
+          "demon_lord_defeated": false,
+          "transformations": [],
+          "item_mutations": [],
+          "dead_characters": [],
+          "completed_objectives": [],
+          "current_location": "Heavenly Reincarnation Chamber",
+          "current_objective": null,
+          "campaign_phase": null,
+          "title": null,
+          "spells": null,
+          "active_effects": null,
+          "environmental_status": null,
+          "weather": "",
+          "scars_added": [],
+          "off_screen_event": "The Reincarnation Gate hums anxiously while the Catgirl Angel tries to sweep her class-assignment blunder under the rug.",
+          "faction_alert_level": null,
+          "allegiance_map": {},
+          "npc_stance_deltas": {},
+          "dossier_deltas": {},
+          "gifts_to_npcs": {},
+          "species_voice_deltas": null,
+          "first_time_milestones": [],
+          "secrets_added": [],
+          "secrets_resolved": [],
+          "newspaper_articles": [],
+          "items_gained": [],
+          "items_lost": [],
+          "floor_items_added": [],
+          "equipped_items": [],
+          "unequipped_items": [],
+          "factions_delta": [],
+          "skills_gained": [],
+          "achievements_gained": [],
+          "party_updates": [],
+          "rumors_added": [],
+          "active_disguise_alias": "",
+          "bgm": "",
+          "newly_appraised": [],
+          "appraised_lvl1_revealed": false,
+          "outcast_betrayal_revealed": false,
+          "execution_death_triggered": false
+        },
+        "scene_minimap": {
+          "view_mode": "tactical_stage",
+          "zone_name": "Heavenly Reincarnation Chamber",
+          "visual_seed": "",
+          "danger_level": "Celestial Gate (SSS Ahead)",
+          "player_spot": "Before the Reincarnation Gate",
+          "player_coords": "[50, 50]",
+          "player_facing_uid": null,
+          "player_facing_name": "",
+          "left_uids": [],
+          "characters": [
+            {
+              "uid": 1002,
+              "name": "Catgirl Angel",
+              "icon": "👼",
+              "dist": "near",
+              "dir": "ahead",
+              "paces": 9,
+              "x": 50,
+              "y": 19,
+              "facing_uid": null,
+              "facing_name": "",
+              "is_moving": false,
+              "species": "Catgirl Angel",
+              "role": "Catgirl Angel (Reincarnation Guide) ♀️",
+              "is_dead": false,
+              "life_status": "ALIVE",
+              "status": "Present in zone",
+              "level": 999,
+              "hp": "99999/99999",
+              "mp": "99999/99999",
+              "atk": 4800,
+              "def": 4500,
+              "mag": 9999,
+              "class_title": "Catgirl Angel (Reincarnation Guide) ♀️",
+              "growth_stage": "Celestial Angel Guide (Lv.999)",
+              "off_screen_activity": "",
+              "visual_seed": "",
+              "description": ""
+            }
+          ],
+          "landmarks": [
+            {
+              "uid": 2001,
+              "name": "Reincarnation Portal Gate",
+              "dist": "far",
+              "dir": "ahead",
+              "paces": 20,
+              "x": 50,
+              "y": 8,
+              "icon": "🏛️",
+              "type": "poi",
+              "is_important": true,
+              "state_tag": "intact",
+              "description": ""
+            },
+            {
+              "uid": 2002,
+              "name": "Class-Assignment Pedestal",
+              "dist": "close",
+              "dir": "left",
+              "paces": 2,
+              "x": 32,
+              "y": 50,
+              "icon": "🏛️",
+              "type": "poi",
+              "is_important": true,
+              "state_tag": "Assignment error",
+              "description": ""
+            },
+            {
+              "uid": 2003,
+              "name": "Messy Celestial Filing Desk",
+              "dist": "near",
+              "dir": "left",
+              "paces": 9,
+              "x": 19,
+              "y": 50,
+              "icon": "🏛️",
+              "type": "poi",
+              "is_important": false,
+              "state_tag": "Cluttered with loose scrolls",
+              "description": ""
+            }
+          ],
+          "footsteps": [],
+          "sound_ripples": []
+        },
+        "partial_stats": {
+          "current_location": "Heavenly Reincarnation Chamber",
+          "current_objective": "Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world",
+          "player_action_status": "Standing before the Reincarnation Gate",
+          "hp_necromancy_mana": "100/100 HP | Dark Mana: 10/10",
+          "sanity": "92% (Lucid & Calculating)",
+          "fatigue": "5% (Rested)",
+          "trauma": "Unscathed",
+          "hunger": "0% (Full)",
+          "defense": "6 (Base: 3 + Gear: +3 | Evasion: +1 EVA)",
+          "magic_damage": "7 (0% Skill Knowledge | Dark Mana 10/10 + Gear: +0)",
+          "balance": "0 GP, 0 SP, 0 CP",
+          "day_time": "Day 1, 12:00 AM",
+          "spells": "0 Necromancy Skill Knowledge (Untaught) | Real-Time World Newspaper (Mortal World Universal Skill) | Bonus Luck",
+          "active_effects": "Accidental Human Necromancer (0 Skill Knowledge) | Bonus Luck | Difficulty: SSS",
+          "current_bgm_prompt": "playful whimsical comedic orchestral instrumental",
+          "current_bgm_zone_slug": "",
+          "current_bgm_combat_flag": false,
+          "fairness": "3 Stars (Valid) - Standing before the Reincarnation Gate (Campaign opening initialized at the Reincarnation Gate.)",
+          "nearby_entities": "Catgirl Angel"
+        },
+        "full_stats": {
+          "title": "Accidental Human Necromancer (0 Skill Knowledge)",
+          "living_world": {
+            "world_clock": "Day 1, 12:00 AM",
+            "total_minutes_elapsed": 0,
+            "world_ecosystem": {
+              "total_minutes_elapsed": 0,
+              "hours_elapsed": 0,
+              "world_evolution_tier": "SSS Difficulty · Tier 1 (Demon King Conquest Active)",
+              "demon_king_dominion_progress": "82% of Mortal Continents under Demon King threat | Demon scouts monitor schemes & dark magic",
+              "human_supremacy_kingdoms": "Strict Human Supremacy Laws Active | Non-humans (including Catgirls) mocked or treated as second-class; Black Magic strictly outlawed",
+              "realtime_newspaper_press": "Dormant (Heavenly Separation — Activates upon entering the Mortal World)",
+              "necromancy_progression": "Skill Knowledge: 0% | Monster Scaling +0 Lvls"
+            },
+            "off_screen_event": "The Reincarnation Gate hums anxiously while the Catgirl Angel tries to sweep her class-assignment blunder under the rug.",
+            "faction_alert_level": "Calm (Routine Protocol)",
+            "active_schedules": {
+              "Catgirl Angel": "Fidgeting behind the Celestial Filing Desk, trying to act innocent"
+            },
+            "npc_plans": {}
+          },
+          "quest_dossier": {
+            "incomplete_sub_objectives": [
+              "Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world",
+              "Address the Catgirl Angel over turning you into a Human Necromancer with 0 skill knowledge",
+              "Decide how to handle the Catgirl Angel and the Reincarnation Gate into the mortal SSS world"
+            ],
+            "failed_side_hustles": [],
+            "audit_paces_remaining": 85,
+            "audit_clock": "Chamber progression: 85 steps",
+            "environmental_status": "Active in Heavenly Reincarnation Chamber",
+            "main_objective": "Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world"
+          },
+          "appraised_characters": [],
+          "dead_characters": [],
+          "allegiance_map": {},
+          "dossier_vault": {},
+          "active_secrets": [],
+          "appraised_lvl1_revealed": false,
+          "outcast_betrayal_revealed": false,
+          "awakened_by_death": false,
+          "death_count": 0,
+          "level": 1,
+          "exp": "0/100 (0% Necromancy Knowledge)",
+          "in_mortal_world": false,
+          "coral_mortal_nerfed": false,
+          "necromancy_knowledge_pct": 0,
+          "newspaper_feed": [],
+          "unassigned_sp": 0,
+          "destiny_debt": 0,
+          "max_pouch_slots": 9,
+          "party_roster": [
+            {
+              "name": "Whalberg",
+              "hp": "100/100",
+              "mana": "10/10",
+              "species": "Human (Hidden Necromancer)",
+              "role": "Accidental Human Necromancer (0 Skill Knowledge)",
+              "status": "Inactive (Idle — No Active Action)"
+            }
+          ],
+          "campaign_phase": "Prologue: Heavenly Reincarnation Blunder (SSS Difficulty)",
+          "rumor_mill": [],
+          "perceptions": {
+            "Catgirl Angel": {
+              "uid": 1002,
+              "iq": "IQ 82 (Lazy Klutz Angel / Future Alcoholic)",
+              "sanity_pct": 85,
+              "sanity": "85% (Lucid)",
+              "outward_facade": "Casual, defensive & trying to hurry you through the gate",
+              "witnessed": "Clumsily stamped Human Necromancer (0 Skill Knowledge) instead of Hero",
+              "believes": "Hopes you walk through alone so she stays comfy in Heaven; if dragged into the mortal world, she loses her wings/halo, drops to Lv.1, and can only return home if you alone defeat the Demon King!",
+              "suspicion_level": "Flustered & Evasive",
+              "trust_score": "15%",
+              "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
+              "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
+              "hidden_agenda": "Sweep the Necromancer blunder under the rug and avoid getting dragged into the SSS mortal world.",
+              "opus_locked": false,
+              "is_fresh_this_turn": false,
+              "updated_at_clock": "Day 1, 12:00 AM"
+            }
+          },
+          "demon_king_odyssey": {
+            "campaign_act": "Prologue: Heavenly Reincarnation Chamber",
+            "distance_to_citadel_leagues": 600,
+            "demon_generals_defeated": "0/6",
+            "world_threat_level": "SSS (Almost Conquered by the Demon King)"
+          },
+          "factions": [
+            {
+              "name": "Heavenly Reincarnation Bureau",
+              "standing": "0"
+            },
+            {
+              "name": "Catgirl Angel (Assigned Guide)",
+              "standing": "-25"
+            }
+          ],
+          "skills_tree": [
+            {
+              "id": "sk_necromancy_zero",
+              "name": "Human Necromancer (0 Skill Knowledge)",
+              "type": "Accidental Role",
+              "cost": "Dark Mana",
+              "desc": "A lazy Catgirl Angel accidentally stamped Necromancer instead of Hero with 0 spell knowledge. You hold a 10/10 Dark Mana pool with zero learned spells yet."
+            },
+            {
+              "id": "sk_bonus_luck",
+              "name": "Bonus Luck",
+              "type": "Passive Anomaly",
+              "cost": "0",
+              "desc": "An anomalous passive blessing granting uncanny fortunate coincidences and narrow escapes. Any hidden caveats remain unknown."
+            },
+            {
+              "id": "sk_realtime_newspaper",
+              "name": "Real-Time World Newspaper",
+              "type": "Universal Mortal World Skill",
+              "cost": "Active (Universal Mortal Skill)",
+              "desc": "Innate broadcast skill shared by everyone inside the mortal world. Streams Demon King frontlines, Human Supremacy decrees, and absurd heroine gossip in real time."
+            }
+          ],
+          "achievements": [],
+          "pouch_inventory": [
+            {
+              "slot": 1,
+              "icon": "🥋",
+              "name": "Plain Reincarnation Tunic",
+              "qty": 1,
+              "desc": "Simple human traveler tunic issued by the Reincarnation Gate (+2 DEF).",
+              "rarity": "Common",
+              "worth": "1 SP",
+              "stat_bonus": "+2 DEF",
+              "equip_slot": "chest",
+              "equipped_slot": "chest",
+              "equipped": true,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            },
+            {
+              "slot": 2,
+              "icon": "👖",
+              "name": "Traveler's Cloth Trousers",
+              "qty": 1,
+              "desc": "Durable dark trousers suited for rough mortal roads (+1 DEF).",
+              "rarity": "Common",
+              "worth": "1 SP",
+              "stat_bonus": "+1 DEF",
+              "equip_slot": "legs",
+              "equipped_slot": "legs",
+              "equipped": true,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            },
+            {
+              "slot": 3,
+              "icon": "👟",
+              "name": "Sturdy Leather Boots",
+              "qty": 1,
+              "desc": "Practical leather boots for quick escapes in an SSS-difficulty realm (+1 EVA).",
+              "rarity": "Common",
+              "worth": "1 SP",
+              "stat_bonus": "+1 EVA",
+              "equip_slot": "feet",
+              "equipped_slot": "feet",
+              "equipped": true,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            },
+            {
+              "slot": 4,
+              "icon": "📖",
+              "name": "Sealed Necromancer's Tome (0% Deciphered)",
+              "qty": 1,
+              "desc": "Unreadable dark-parchment manual stuffed into your pocket during the Reincarnation blunder. Keep hidden from Human Supremacy patrols!",
+              "rarity": "Uncommon",
+              "worth": "0 CP",
+              "stat_bonus": "+1 Dark Insight",
+              "equip_slot": "hand",
+              "equipped_slot": null,
+              "equipped": false,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            },
+            {
+              "slot": 5,
+              "icon": "📦",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "stat_bonus": null,
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            },
+            {
+              "slot": 6,
+              "icon": "📦",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "stat_bonus": null,
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            },
+            {
+              "slot": 7,
+              "icon": "📦",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "stat_bonus": null,
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            },
+            {
+              "slot": 8,
+              "icon": "📦",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "stat_bonus": null,
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            },
+            {
+              "slot": 9,
+              "icon": "📦",
+              "name": "Empty Slot",
+              "qty": 0,
+              "desc": "Available storage",
+              "rarity": "None",
+              "worth": "0 CP",
+              "stat_bonus": null,
+              "equip_slot": "none",
+              "equipped_slot": null,
+              "equipped": false,
+              "enchantments": [],
+              "slapstick_effect": null,
+              "category": "misc"
+            }
+          ],
+          "held_hand_currency": null,
+          "equipped_loadout": {
+            "head": null,
+            "chest": {
+              "slot": 1,
+              "name": "Plain Reincarnation Tunic",
+              "icon": "🥋",
+              "stat_bonus": "+2 DEF",
+              "rarity": "Common",
+              "equip_slot": "chest"
+            },
+            "legs": {
+              "slot": 2,
+              "name": "Traveler's Cloth Trousers",
+              "icon": "👖",
+              "stat_bonus": "+1 DEF",
+              "rarity": "Common",
+              "equip_slot": "legs"
+            },
+            "feet": {
+              "slot": 3,
+              "name": "Sturdy Leather Boots",
+              "icon": "👟",
+              "stat_bonus": "+1 EVA",
+              "rarity": "Common",
+              "equip_slot": "feet"
+            },
+            "right_hand": null,
+            "left_hand": null
+          },
+          "recent_equipment_actions": [],
+          "recent_gambling_actions": [],
+          "recent_player_activities": [],
+          "pending_first_time_discoveries": [],
+          "player_true_name": "Whalberg"
+        },
+        "world_map_nodes": [],
+        "dynamic_species_registry": {},
+        "updated_codex_iq": {}
+      },
+      "ledger": {
+        "npc_registry": {},
+        "uid_registry": {
+          "npc": {},
+          "landmark": {},
+          "footstep": {}
+        },
+        "perceptions_vault": {
+          "1002": {
+            "name": "Catgirl Angel",
+            "data": {
+              "uid": 1002,
+              "iq": "IQ 82 (Lazy Klutz Angel / Future Alcoholic)",
+              "sanity_pct": 85,
+              "sanity": "85% (Lucid)",
+              "outward_facade": "Casual, defensive & trying to hurry you through the gate",
+              "witnessed": "Clumsily stamped Human Necromancer (0 Skill Knowledge) instead of Hero",
+              "believes": "Hopes you walk through alone so she stays comfy in Heaven; if dragged into the mortal world, she loses her wings/halo, drops to Lv.1, and can only return home if you alone defeat the Demon King!",
+              "suspicion_level": "Flustered & Evasive",
+              "trust_score": "15%",
+              "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
+              "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
+              "hidden_agenda": "Sweep the Necromancer blunder under the rug and avoid getting dragged into the SSS mortal world.",
+              "opus_locked": false,
+              "is_fresh_this_turn": false,
+              "updated_at_clock": "Day 1, 12:00 AM"
+            }
+          }
+        },
+        "dossier_vault": {},
+        "appraised_uids": [],
+        "allegiance_map": {},
+        "active_secrets_vault": {},
+        "unknown_to_real_map": {},
+        "introduced_names": [],
+        "in_mortal_world": false,
+        "location_states": {
+          "heavenly_reincarnation_chamber": {
+            "player": {
+              "x": 50,
+              "y": 50,
+              "spot": "Before the Reincarnation Gate",
+              "facing_uid": null
+            },
+            "characters": [
+              {
+                "uid": 1002,
+                "name": "Catgirl Angel",
+                "icon": "👼",
+                "dist": "near",
+                "dir": "ahead",
+                "paces": 9,
+                "x": 50,
+                "y": 19,
+                "facing_uid": null,
+                "facing_name": "",
+                "is_moving": false,
+                "species": "Catgirl Angel",
+                "role": "Catgirl Angel (Reincarnation Guide) ♀️",
+                "is_dead": false,
+                "life_status": "ALIVE",
+                "status": "Present in zone",
+                "level": 999,
+                "hp": "99999/99999",
+                "mp": "99999/99999",
+                "atk": 4800,
+                "def": 4500,
+                "mag": 9999,
+                "class_title": "Catgirl Angel (Reincarnation Guide) ♀️",
+                "growth_stage": "Celestial Angel Guide (Lv.999)",
+                "off_screen_activity": "",
+                "visual_seed": "",
+                "description": ""
+              }
+            ],
+            "landmarks": [
+              {
+                "uid": 2001,
+                "name": "Reincarnation Portal Gate",
+                "dist": "far",
+                "dir": "ahead",
+                "paces": 20,
+                "x": 50,
+                "y": 8,
+                "icon": "🏛️",
+                "type": "poi",
+                "is_important": true,
+                "state_tag": "intact",
+                "description": ""
+              },
+              {
+                "uid": 2002,
+                "name": "Class-Assignment Pedestal",
+                "dist": "close",
+                "dir": "left",
+                "paces": 2,
+                "x": 32,
+                "y": 50,
+                "icon": "🏛️",
+                "type": "poi",
+                "is_important": true,
+                "state_tag": "Assignment error",
+                "description": ""
+              },
+              {
+                "uid": 2003,
+                "name": "Messy Celestial Filing Desk",
+                "dist": "near",
+                "dir": "left",
+                "paces": 9,
+                "x": 19,
+                "y": 50,
+                "icon": "🏛️",
+                "type": "poi",
+                "is_important": false,
+                "state_tag": "Cluttered with loose scrolls",
+                "description": ""
+              }
+            ],
+            "ground_items": []
+          }
+        },
+        "scars_by_location": {},
+        "weather_by_location": {},
+        "odyssey": {
+          "act_id": "prologue",
+          "generals": [],
+          "generals_defeated": 0,
+          "leagues": 600,
+          "doom_minutes": 0,
+          "flags": {}
+        },
+        "last_active_location": "Heavenly Reincarnation Chamber",
+        "player_true_name": "Whalberg"
+      },
+      "codex": {
+        "Catgirl Angel": {
+          "uid": 1002,
+          "name": "Catgirl Angel",
+          "canonical_name": "Catgirl Angel",
+          "entity_id": "coral",
+          "species": "Catgirl Angel",
+          "role": "Catgirl Angel (Reincarnation Guide) ♀️",
+          "level": 999,
+          "icon": "👼",
+          "visual_seed": "",
+          "speech_quirk": "Flustered catgirl slips (\"nya?!\", \"mrrp!\") when panicked",
+          "face_description": "1girl, solo female, adorable lazy klutzy 2D anime catgirl angel, vibrant coral-pink hair, fluffy coral-colored cat ears on top of head, luminous golden angel halo floating above head, coral-tinted feathered angel wings behind shoulders, expressive panicky coral-amber eyes, coral-and-white angelic tunic with gold trim, neck up only, strictly head and face only, zero shoulders, no torso, no chest, no arms, no legs",
+          "eye_color": "captivating glowing ruby-pink eyes, radiant magenta ringed irises, sparkling anime starburst catchlights, sharp dark pupils, identical matching pink coloration in both eyes",
+          "upper_clothing": "",
+          "base_image": null,
+          "transform_version": 0,
+          "iq": 82,
+          "iq_tier": "Lazy Klutz Angel / Future Alcoholic",
+          "iq_behavior": "Tries desperately to look impressive, only to sound stupid and delusional.",
+          "is_dead": false,
+          "life_status": "ALIVE",
+          "is_ephemeral": false,
+          "locked": true,
+          "created_at": "2026-11-21T14:30:02.203Z",
+          "hp": "99999/99999",
+          "mp": "99999/99999",
+          "cartesia_voice_id": "voice_kelsey",
+          "cartesia_pitch": 1.12
+        }
+      }
+    }
+  },
+  "ledger": {
+    "npc_registry": {},
+    "uid_registry": {
+      "npc": {},
+      "landmark": {},
+      "footstep": {}
+    },
+    "perceptions_vault": {
+      "1002": {
+        "name": "Catgirl Angel",
+        "data": {
+          "uid": 1002,
+          "iq": "IQ 82 (Lazy Klutz Angel / Future Alcoholic)",
+          "sanity_pct": 85,
+          "sanity": "85% (Lucid)",
+          "outward_facade": "Casual, defensive & trying to hurry you through the gate",
+          "witnessed": "Clumsily stamped Human Necromancer (0 Skill Knowledge) instead of Hero",
+          "believes": "Hopes you walk through alone so she stays comfy in Heaven; if dragged into the mortal world, she loses her wings/halo, drops to Lv.1, and can only return home if you alone defeat the Demon King!",
+          "suspicion_level": "Flustered & Evasive",
+          "trust_score": "15%",
+          "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
+          "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
+          "hidden_agenda": "Sweep the Necromancer blunder under the rug and avoid getting dragged into the SSS mortal world.",
+          "opus_locked": false,
+          "is_fresh_this_turn": false,
+          "updated_at_clock": "Day 1, 12:00 AM"
+        }
+      }
+    },
+    "dossier_vault": {},
+    "appraised_uids": [],
+    "allegiance_map": {},
+    "active_secrets_vault": {},
+    "unknown_to_real_map": {},
+    "introduced_names": [],
+    "in_mortal_world": false,
+    "location_states": {
+      "heavenly_reincarnation_chamber": {
+        "player": {
+          "x": 50,
+          "y": 50,
+          "spot": "Right beside the Reincarnation Portal Gate",
+          "facing_uid": null
+        },
+        "characters": [
+          {
+            "uid": 1002,
+            "name": "Catgirl Angel",
+            "icon": "👼",
+            "dist": "close",
+            "dir": "ahead",
+            "paces": 2,
+            "x": 50,
+            "y": 32,
+            "facing_uid": null,
+            "facing_name": "",
+            "is_moving": false,
+            "species": "Catgirl Angel",
+            "role": "Catgirl Angel (Reincarnation Guide) ♀️",
+            "is_dead": false,
+            "life_status": "ALIVE",
+            "status": "Present in zone",
+            "level": 999,
+            "hp": "99999/99999",
+            "mp": "99999/99999",
+            "atk": 4800,
+            "def": 4500,
+            "mag": 9999,
+            "class_title": "Catgirl Angel (Reincarnation Guide) ♀️",
+            "growth_stage": "Celestial Angel Guide (Lv.999)",
+            "off_screen_activity": "",
+            "visual_seed": "",
+            "description": ""
+          }
+        ],
+        "landmarks": [
+          {
+            "uid": 2001,
+            "name": "Reincarnation Portal Gate",
+            "dist": "far",
+            "dir": "ahead",
+            "paces": 20,
+            "x": 50,
+            "y": 8,
+            "icon": "🏛️",
+            "type": "poi",
+            "is_important": true,
+            "state_tag": "intact",
+            "description": ""
+          },
+          {
+            "uid": 2002,
+            "name": "Class-Assignment Pedestal",
+            "dist": "close",
+            "dir": "left",
+            "paces": 2,
+            "x": 32,
+            "y": 50,
+            "icon": "🏛️",
+            "type": "poi",
+            "is_important": true,
+            "state_tag": "Assignment error",
+            "description": ""
+          },
+          {
+            "uid": 2003,
+            "name": "Messy Celestial Filing Desk",
+            "dist": "near",
+            "dir": "left",
+            "paces": 9,
+            "x": 19,
+            "y": 50,
+            "icon": "🏛️",
+            "type": "poi",
+            "is_important": false,
+            "state_tag": "Cluttered with loose scrolls",
+            "description": ""
+          }
+        ],
+        "ground_items": []
+      }
+    },
+    "scars_by_location": {},
+    "weather_by_location": {},
+    "odyssey": {
+      "act_id": "prologue",
+      "generals": [],
+      "generals_defeated": 0,
+      "leagues": 600,
+      "doom_minutes": 0,
+      "flags": {}
+    },
+    "last_active_location": "Heavenly Reincarnation Chamber",
+    "player_true_name": "Whalberg"
+  },
+  "codex": {
+    "Catgirl Angel": {
+      "uid": 1002,
+      "name": "Catgirl Angel",
+      "canonical_name": "Catgirl Angel",
+      "entity_id": "coral",
+      "species": "Catgirl Angel",
+      "role": "Catgirl Angel (Reincarnation Guide) ♀️",
+      "level": 999,
+      "icon": "👼",
+      "visual_seed": "",
+      "speech_quirk": "Flustered catgirl slips (\"nya?!\", \"mrrp!\") when panicked",
+      "face_description": "1girl, solo female, adorable lazy klutzy 2D anime catgirl angel, vibrant coral-pink hair, fluffy coral-colored cat ears on top of head, luminous golden angel halo floating above head, coral-tinted feathered angel wings behind shoulders, expressive panicky coral-amber eyes, coral-and-white angelic tunic with gold trim, neck up only, strictly head and face only, zero shoulders, no torso, no chest, no arms, no legs",
+      "eye_color": "captivating glowing ruby-pink eyes, radiant magenta ringed irises, sparkling anime starburst catchlights, sharp dark pupils, identical matching pink coloration in both eyes",
+      "upper_clothing": "",
+      "base_image": null,
+      "transform_version": 0,
+      "iq": 82,
+      "iq_tier": "Lazy Klutz Angel / Future Alcoholic",
+      "iq_behavior": "Tries desperately to look impressive, only to sound stupid and delusional.",
+      "is_dead": false,
+      "life_status": "ALIVE",
+      "is_ephemeral": false,
+      "locked": true,
+      "created_at": "2026-11-21T14:30:02.203Z",
+      "hp": "99999/99999",
+      "mp": "99999/99999",
+      "cartesia_voice_id": "voice_kelsey",
+      "cartesia_pitch": 1.12
+    }
+  },
+  "dynamicSpecies": {}
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Luna 3D RPG Visual Novel Studio",
+  "description": "Real-time AI-directed 3D RPG Visual Novel engine with concurrent Opus beat streaming, instant Beat 0 narrator speech synthesis, Cerebras GPT-OSS reasoning, Celeris micro-enrichment, and tactical radar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

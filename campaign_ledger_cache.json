@@ -1,0 +1,120 @@
+{
+  "npc_registry": {},
+  "uid_registry": {
+    "npc": {},
+    "landmark": {},
+    "footstep": {}
+  },
+  "perceptions_vault": {
+    "1002": {
+      "uid": 1002,
+      "name": "Catgirl Angel",
+      "data": {
+        "iq": "IQ 82 (Lazy Klutz Angel / Future Alcoholic) | Facade: \"Nothing happened, go through the gate!\"",
+        "outward_facade": "Casual, defensive & trying to hurry you through the gate",
+        "witnessed": "Clumsily stamped Human Necromancer (0 Skill Knowledge) instead of Hero",
+        "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
+        "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
+        "believes": "Hopes you walk through alone so she stays comfy in Heaven; if dragged into the mortal world, she loses her wings/halo, drops to Lv.1, and can only return home if you alone defeat the Demon King!",
+        "suspicion_level": "Flustered & Evasive",
+        "trust_score": "15%",
+        "hidden_agenda": "Sweep the Necromancer blunder under the rug and avoid getting dragged into the SSS mortal world.",
+        "opus_locked": false,
+        "is_fresh_this_turn": false,
+        "updated_at_clock": "Day 1, 12:00 AM"
+      }
+    }
+  },
+  "dossier_vault": {},
+  "appraised_uids": [],
+  "allegiance_map": {},
+  "active_secrets_vault": {},
+  "unknown_to_real_map": {},
+  "introduced_names": [],
+  "in_mortal_world": false,
+  "location_states": {
+    "heavenly_reincarnation_chamber": {
+      "characters": [
+        {
+          "uid": 1002,
+          "name": "Catgirl Angel",
+          "icon": "👼",
+          "dist": "near",
+          "dir": "ahead",
+          "paces": 9,
+          "x": 50,
+          "y": 19,
+          "species": "Catgirl Angel",
+          "role": "Catgirl Angel (Reincarnation Guide) ♀️",
+          "status": "Standing beside the Reincarnation Gate",
+          "level": 999,
+          "hp": "99999/99999",
+          "mp": "99999/99999",
+          "description": "Coral-haired Catgirl Angel with luminous golden halo and coral angel wings",
+          "atk": 4800,
+          "def": 4500,
+          "mag": 9999,
+          "class_title": "Catgirl Angel (Reincarnation Guide) ♀️",
+          "growth_stage": "Celestial Angel Guide (Lv.999)",
+          "off_screen_activity": "Coral-haired Catgirl Angel with luminous golden halo and coral angel wings"
+        }
+      ],
+      "landmarks": [
+        {
+          "uid": 2001,
+          "name": "Reincarnation Portal Gate",
+          "icon": "🌀",
+          "dist": "far",
+          "dir": "ahead",
+          "paces": 20,
+          "x": 50,
+          "y": 8,
+          "type": "door",
+          "is_important": true,
+          "description": "Swirling golden gate descending straight into the SSS mortal world"
+        },
+        {
+          "uid": 2002,
+          "name": "Class-Assignment Pedestal",
+          "icon": "🔮",
+          "dist": "close",
+          "dir": "left",
+          "paces": 2,
+          "x": 31,
+          "y": 50,
+          "type": "poi",
+          "is_important": true,
+          "description": "Glowing celestial pedestal blinking 'HUMAN NECROMANCER (0% SKILL KNOWLEDGE)' in error red"
+        },
+        {
+          "uid": 2003,
+          "name": "Messy Celestial Filing Desk",
+          "icon": "📜",
+          "dist": "near",
+          "dir": "left",
+          "paces": 9,
+          "x": 19,
+          "y": 50,
+          "type": "poi",
+          "is_important": false,
+          "description": "Cluttered desk piled with spilled ink, snack wrappers, and torn reincarnation scrolls"
+        }
+      ],
+      "ground_items": []
+    }
+  },
+  "scars_by_location": {},
+  "weather_by_location": {},
+  "odyssey": {
+    "act_id": "prologue",
+    "generals": [],
+    "generals_defeated": 0,
+    "leagues": 600,
+    "doom_minutes": 0,
+    "flags": {}
+  },
+  "last_active_location": "Heavenly Reincarnation Chamber",
+  "_migrations": {
+    "purged_canonical_generic_collapse_v2": true
+  }
+}
