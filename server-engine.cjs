@@ -13372,8 +13372,9 @@ function executeThreerouterHttpVariant({
 }
 
 // Opus dialogue writer runs with ZERO reasoning: no thinking budget, no reasoning_effort and no
-// extended-thinking output. Anthropic endpoints get an explicit thinking:{type:'disabled'} plus a
-// field-free fallback variant, so a proxy that rejects the flag can never break the turn.
+// extended-thinking output. Anthropic endpoints OMIT the thinking field entirely (claude-opus-5-5
+// rejects thinking:{type:'disabled'}; omitting it is the no-thinking default), with a field-free
+// fallback variant, so a proxy that rejects the flag can never break the turn.
 async function openThreerouterOpusNoReasoningStream({
   activeKey,
   systemPrompt = '',
@@ -13410,7 +13411,6 @@ async function openThreerouterOpusNoReasoningStream({
               body: {
                 model: THREEROUTER_MODEL,
                 max_tokens: 4096,
-                thinking: { type: 'disabled' },
                 system: [{ type: 'text', text: resolvedSystem, cache_control: { type: 'ephemeral' } }],
                 messages: [{ role: 'user', content: cachedUserBlocks }],
                 stream: true
@@ -13424,7 +13424,6 @@ async function openThreerouterOpusNoReasoningStream({
           body: {
             model: THREEROUTER_MODEL,
             max_tokens: 4096,
-            thinking: { type: 'disabled' },
             system: resolvedSystem,
             messages: [{ role: 'user', content: resolvedUserStr }],
             stream: true
