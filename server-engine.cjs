@@ -5606,6 +5606,32 @@ function normalizeCerebrasReasoningEffort() {
   return CEREBRAS_FIXED_REASONING_EFFORT;
 }
 
+// Cerebras prompt caching is automatic and free: no cache markers or TTL knobs exist. The system
+// message is a byte-identical static prefix (cached in 128-token blocks, TTL 5-60 min) and every
+// volatile line stays in the user message, which is the layout Cerebras recommends. A stable
+// per-campaign/task prompt_cache_key keeps matching prefixes on the same cache under load.
+// Cached input tokens are billed at the standard rate, so this saves latency and uncached-TPM
+// headroom, never money.
+function buildCerebrasPromptCacheKey(scope = 'task', campaignId = '') {
+  const cid = String(campaignId || 'default').trim().slice(0, 120) || 'default';
+  return ('luna-' + String(scope || 'task').trim() + '-' + cid).slice(0, 1024);
+}
+
+function readCerebrasCacheUsage(usage = null) {
+  const details = (usage && typeof usage === 'object')
+    ? (usage.prompt_tokens_details || usage.prompt_token_details || {})
+    : {};
+  const cached = Number(details.cached_tokens ?? (usage && usage.cached_tokens) ?? 0) || 0;
+  const promptTokens = Number((usage && (usage.prompt_tokens ?? usage.input_tokens)) ?? 0) || 0;
+  return { cached, promptTokens };
+}
+
+function formatCerebrasCacheNote({ cached = 0, promptTokens = 0 } = {}) {
+  if (!promptTokens) return '';
+  const pct = Math.round((Math.min(cached, promptTokens) / promptTokens) * 100);
+  return ' | cache ' + cached + '/' + promptTokens + ' in (' + pct + '%)';
+}
+
 async function callCerebrasGptReasoning({
   systemPrompt = '',
   userPrompt = '',
@@ -5614,7 +5640,8 @@ async function callCerebrasGptReasoning({
   maxCompletionTokens = 32768,
   timeoutMs = 45000,
   jsonObject = false,
-  onContentPartial = null
+  onContentPartial = null,
+  promptCacheKey = ''
 }) {
   const keyPool = resolveCerebrasKeyPool(activeKey);
   if (keyPool.length === 0) {
@@ -5632,6 +5659,7 @@ async function callCerebrasGptReasoning({
   }
   messages.push({ role: 'user', content: String(userPrompt || '').trim() });
 
+  const cacheKey = String(promptCacheKey || '').trim().slice(0, 1024);
   const wantStream = typeof onContentPartial === 'function';
 
   let lastErr = null;
@@ -5655,6 +5683,7 @@ async function callCerebrasGptReasoning({
           reasoning_format: 'parsed',
           ...(jsonObject ? { response_format: { type: 'json_object' } } : {}),
           ...(wantStream ? { stream: true } : {}),
+          ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
           max_completion_tokens: maxCompletionTokens
         }),
         signal: controller.signal
@@ -5715,7 +5744,7 @@ async function callCerebrasGptReasoning({
 
         const finalContent = rawContentStream.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
         if (finalContent) {
-          console.log('[Cerebras ' + CEREBRAS_MODEL + ' · Effort=' + effort.toUpperCase() + ' (Stream)]: Done in ' + (Date.now() - startMs) + 'ms (Reasoning: ' + reasoningChars + ' chars · Answer: ' + finalContent.length + ' chars)');
+          console.log('[Cerebras ' + CEREBRAS_MODEL + ' · Effort=' + effort.toUpperCase() + ' (Stream)]: Done in ' + (Date.now() - startMs) + 'ms (Reasoning: ' + reasoningChars + ' chars · Answer: ' + finalContent.length + ' chars' + formatCerebrasCacheNote(readCerebrasCacheUsage(finalUsage)) + ')');
           return { content: finalContent, reasoningLength: reasoningChars, usage: finalUsage };
         }
         lastErr = new Error('Cerebras stream returned empty message.content (check token budget).');
@@ -5733,7 +5762,8 @@ async function callCerebrasGptReasoning({
         if (wantStream) {
           try { onContentPartial(finalContent, finalContent); } catch (_) {}
         }
-        console.log('[Cerebras ' + CEREBRAS_MODEL + ' · Effort=' + effort.toUpperCase() + ']: Done in ' + (Date.now() - startMs) + 'ms (Reasoning: ' + reasoningChars + ' chars · Answer: ' + finalContent.length + ' chars)');
+        const cacheNote = formatCerebrasCacheNote(readCerebrasCacheUsage(parsed?.usage));
+        console.log('[Cerebras ' + CEREBRAS_MODEL + ' · Effort=' + effort.toUpperCase() + ']: Done in ' + (Date.now() - startMs) + 'ms (Reasoning: ' + reasoningChars + ' chars · Answer: ' + finalContent.length + ' chars' + cacheNote + ')');
         return { content: finalContent, reasoningLength: reasoningChars, usage: parsed?.usage || null };
       }
       lastErr = new Error('Cerebras returned empty message.content (check token budget).');
@@ -5820,7 +5850,8 @@ async function callHighReasoningOrCelerisText({
   celerisKey = null,
   reasoningEffort = 'high',
   maxCompletionTokens = 32768,
-  timeoutMs = 45000
+  timeoutMs = 45000,
+  promptCacheKey = ''
 }) {
   const hasCerebras = resolveCerebrasKeyPool(cerebrasKey).length > 0;
   if (hasCerebras) {
@@ -5831,7 +5862,8 @@ async function callHighReasoningOrCelerisText({
         activeKey: cerebrasKey,
         reasoningEffort,
         maxCompletionTokens,
-        timeoutMs
+        timeoutMs,
+        promptCacheKey
       });
       if (res?.content) return res.content;
     } catch (cbErr) {
@@ -5853,7 +5885,8 @@ async function callCelerisFirstWithCerebrasFallback({
   cerebrasKey = null,
   maxCompletionTokens = 8192,
   timeoutMs = 25000,
-  jsonObject = false
+  jsonObject = false,
+  promptCacheKey = ''
 }) {
   const hasCeleris = resolveProviderKeyPool('celeris', celerisKey).filter(k => !k.startsWith('csk-')).length > 0;
   if (hasCeleris) {
@@ -5877,7 +5910,8 @@ async function callCelerisFirstWithCerebrasFallback({
       reasoningEffort: 'low',
       maxCompletionTokens,
       timeoutMs,
-      jsonObject
+      jsonObject,
+      promptCacheKey
     });
     return cbRes?.content || '';
   }
@@ -6252,6 +6286,7 @@ async function runCerebrasSequentialPrePass({
   livingWorldLine = '',
   activeSecretsBlock = '',
   campaignSummary = '',
+  promptCacheKey = '',
   cerebrasKey = null,
   reasoningEffort = 'high',
   fullStats = {},
@@ -6296,6 +6331,7 @@ Audit this turn with high reasoning and return the tactical referee & comedy liv
     reasoningEffort,
     maxCompletionTokens: 32768,
     timeoutMs: 22000,
+    promptCacheKey,
     jsonObject: true,
     onContentPartial: (!isStartCommand && typeof onEarlyBeat0 === 'function')
       ? (partialJson) => {
@@ -9519,6 +9555,7 @@ const handleStatsLedger = async (req, res) => {
   const rawCelerisKey = celerisApiKey || mercuryApiKey || req.headers['x-celeris-api-key'] || req.headers['x-mercury-api-key'] || '';
   const activeMercuryKey = rawCelerisKey.startsWith('csk-') ? MERCURY_API_KEY : (rawCelerisKey || MERCURY_API_KEY);
   const activeCerebrasKey = cerebrasApiKey || req.headers['x-cerebras-api-key'] || CEREBRAS_API_KEY;
+  const campaignCacheId = getRequestCampaignIdServer(req);
 
   const priorAnchor = currentStats || sonnetGroundTruth || {};
   const priorPartial = priorAnchor.partial_stats || {};
@@ -9686,7 +9723,8 @@ MANDATORY STAGE-3 TASKS:
           celerisKey: activeMercuryKey,
           reasoningEffort: reasoningEffort || 'high',
           maxCompletionTokens: 32768,
-          timeoutMs: 45000
+          timeoutMs: 45000,
+          promptCacheKey: buildCerebrasPromptCacheKey('stats', campaignCacheId)
         });
         parsedStats = extractValidJson(rawContent);
         if (parsedStats && (parsedStats.partial_stats || parsedStats.deltas || parsedStats.scene_minimap)) break;
@@ -11175,11 +11213,6 @@ let LAST_LOCKED_EPOCH_INDEX = 0;
 const CHRONICLE_MAX_CHARS = 600;   // cached in Block 0 for a whole epoch -> cheap to keep rich
 const CHRONICLE_MSG_CHARS = 500;   // per evicted message fed to Mercury
 const OPUS_DEFAULT_CHRONICLE = '[CHR]:S:H;N:0%;Z:Heavenly Reincarnation Chamber;C:0CP;G:Tunic,Trousers,Boots,Tome';
-// Prompt-cache TTL defaults to 1h (players often take >5 min per turn). Set OPUS_CACHE_TTL=5m to go back to the cheaper 5-minute cache.
-// 1h writes cost more, but if the proxy rejects "ttl" the request automatically falls back to a plain 5m cache (Tier 2).
-const OPUS_CACHE_CONTROL = process.env.OPUS_CACHE_TTL === '5m'
-  ? { type: 'ephemeral' }
-  : { type: 'ephemeral', ttl: '1h' };
 
 // ==================== PER-CAMPAIGN OPUS MEMORY (TURN-KEYED DELTAS, EPOCH SNAPSHOT) ====================
 const OPUS_SESSION_MEMORY = new Map();
@@ -11317,6 +11350,7 @@ const handleSummarizeChronicle = async (req, res) => {
   const rawCelerisSumKey = celerisApiKey || mercuryApiKey || req.headers['x-celeris-api-key'] || req.headers['x-mercury-api-key'] || '';
   const activeMercuryKey = rawCelerisSumKey.startsWith('csk-') ? MERCURY_API_KEY : (rawCelerisSumKey || MERCURY_API_KEY);
   const activeCerebrasKey = cerebrasApiKey || req.headers['x-cerebras-api-key'] || CEREBRAS_API_KEY;
+  const campaignCacheId = getRequestCampaignIdServer(req);
   const priorLine = String(currentSummary || '').replace(/^\[CHR\]:/, '').replace(/\s+/g, ' ').trim();
 
   const deltaText = (recentMessages || [])
@@ -11347,7 +11381,8 @@ const handleSummarizeChronicle = async (req, res) => {
   celerisKey: activeMercuryKey,
   reasoningEffort: reasoningEffort || 'high',
   maxCompletionTokens: 16384,
-  timeoutMs: 45000
+  timeoutMs: 45000,
+  promptCacheKey: buildCerebrasPromptCacheKey('chronicle', campaignCacheId)
   });
   const cleanedSummary = String(rawContent || '')
   .replace(/^["'\s]+|["'\s]+$/g, '')
@@ -13038,8 +13073,6 @@ function evaluatePreFlightActionFirewallServer({
   };
 }
 
-let patewayAnthropicCacheUnsupported = false;
-
 function executeThreerouterHttpVariant({
   urlStr,
   activeKey,
@@ -13378,7 +13411,6 @@ function executeThreerouterHttpVariant({
 async function openThreerouterOpusNoReasoningStream({
   activeKey,
   systemPrompt = '',
-  userContentBlocks = null,
   flatUserPromptString = '',
   flatMessages = [],
   signal
@@ -13388,35 +13420,8 @@ async function openThreerouterOpusNoReasoningStream({
   const resolvedSystem = systemPrompt || flatMessages.find(m => m?.role === 'system')?.content || '';
   const resolvedUserStr = flatUserPromptString || flatMessages.find(m => m?.role === 'user')?.content || '';
 
-  const nonEmptyBlocks = (Array.isArray(userContentBlocks) && userContentBlocks.length > 0
-    ? userContentBlocks
-    : [{ type: 'text', text: resolvedUserStr }])
-    .map(b => ({ type: 'text', text: String(b?.text || '').trim() }))
-    .filter(b => b.text.length > 0);
-
-  const cachedUserBlocks = nonEmptyBlocks.map((b, idx) =>
-    idx === 0 && b.text.length >= 256
-      ? { type: 'text', text: b.text, cache_control: { type: 'ephemeral' } }
-      : b
-  );
-
   const variants = isAnthropicEndpoint
     ? [
-        ...(!patewayAnthropicCacheUnsupported
-          ? [{
-              label: `Pateway-Anthropic-SSE-Cached (${THREEROUTER_MODEL})`,
-              stream: true,
-              timeoutMs: 14000,
-              isCacheTier: true,
-              body: {
-                model: THREEROUTER_MODEL,
-                max_tokens: 4096,
-                system: [{ type: 'text', text: resolvedSystem, cache_control: { type: 'ephemeral' } }],
-                messages: [{ role: 'user', content: cachedUserBlocks }],
-                stream: true
-              }
-            }]
-          : []),
         {
           label: `Pateway-Anthropic-SSE (${THREEROUTER_MODEL} · Stream)`,
           stream: true,
@@ -13495,10 +13500,6 @@ async function openThreerouterOpusNoReasoningStream({
       return { asyncIterableStream: result.asyncIterableStream, upstream: null, variantLabel: variant.label };
     }
 
-    if (variant.isCacheTier && (result.httpStatus === 400 || result.httpStatus === 422)) {
-      patewayAnthropicCacheUnsupported = true;
-    }
-
     lastErrText = result.errorText || 'Pateway request failed';
     console.warn(`[${variant.label} Failed]: ${String(lastErrText).slice(0, 220)}`);
     if (result.httpStatus === 401 || result.httpStatus === 403) {
@@ -13534,7 +13535,8 @@ async function runSingleBeatCelerisEnricher({
   beat0Text = '',
   priorBeatText = '',
   activeCelerisKey = null,
-  activeCerebrasKey = null
+  activeCerebrasKey = null,
+  promptCacheKey = ''
 }) {
   if (uid === 1000) return null;
   const hasCeleris = resolveProviderKeyPool('celeris', activeCelerisKey).filter(k => !k.startsWith('csk-')).length > 0;
@@ -13559,7 +13561,8 @@ async function runSingleBeatCelerisEnricher({
       cerebrasKey: activeCerebrasKey,
       maxCompletionTokens: 1024,
       timeoutMs: 4500,
-      jsonObject: true
+      jsonObject: true,
+      promptCacheKey
     });
     const parsed = extractValidJson(raw);
     return (parsed && typeof parsed === 'object') ? parsed : null;
@@ -14100,7 +14103,8 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
             beat0Text: beat0CameraText,
             priorBeatText: priorBeatForContext,
             activeCelerisKey,
-            activeCerebrasKey
+            activeCerebrasKey,
+            promptCacheKey: buildCerebrasPromptCacheKey('enricher', getRequestCampaignIdServer(req))
           })
             .then(enriched => {
               if (!enriched) return;
@@ -14163,7 +14167,8 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
             beat0Text: beat0CameraText,
             priorBeatText: priorBeatForContext,
             activeCelerisKey,
-            activeCerebrasKey
+            activeCerebrasKey,
+            promptCacheKey: buildCerebrasPromptCacheKey('enricher', getRequestCampaignIdServer(req))
           });
 
           if (enriched) {
@@ -14310,6 +14315,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         livingWorldLine,
         activeSecretsBlock: activeEnglishSecretsBlock,
         campaignSummary,
+        promptCacheKey: buildCerebrasPromptCacheKey('prepass', getRequestCampaignIdServer(req)),
         cerebrasKey: activeCerebrasKey,
         reasoningEffort: selectedCerebrasEffort,
         fullStats,
@@ -14491,7 +14497,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       '[TURN]:\n' + composedUserTurn
     ].join('\n');
 
-    console.log('[OpusCache] epoch ' + currentEpochIndex + (needsEpochLock ? ' (LOCK)' : '') + ' · history ' + (historyTurnBlocks.length - 1) + ' turns · Δ ' + turnDiff.changed.length + '/' + Object.keys(opusStateMap).length + ' keys · tail ' + volatileTurnTail.length + ' chars');
+    console.log('[OpusMemory] epoch ' + currentEpochIndex + (needsEpochLock ? ' (LOCK)' : '') + ' · history ' + (historyTurnBlocks.length - 1) + ' turns · Δ ' + turnDiff.changed.length + '/' + Object.keys(opusStateMap).length + ' keys · tail ' + volatileTurnTail.length + ' chars');
 
     const userContentBlocks = [...historyTurnBlocks, { type: 'text', text: volatileTurnTail }];
     const flatUserPromptString = userContentBlocks.map(b => b.text).filter(Boolean).join('\n\n');
@@ -14529,7 +14535,6 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         const opened = await openThreerouterOpusNoReasoningStream({
           activeKey,
           systemPrompt: immutableSystemPromptText,
-          userContentBlocks,
           flatUserPromptString,
           flatMessages,
           signal: upstreamAbortController.signal
@@ -14553,8 +14558,6 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     }
 
     let tokenCount = 0;
-    let cacheReadTokens = 0;
-    let cacheWriteTokens = 0;
 
     let scannedUpToCursor = -1;
     let dArrayClosed = false;
@@ -14658,19 +14661,6 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       upstreamAbortController,
       alreadyFlushedHeaders: true,
       forwardText: false,
-      onData: (data) => {
-        const u = data?.usage || data?.message?.usage || data?.result?.usage || data?.usageDetails;
-        if (u && typeof u === 'object') {
-          if (typeof u.prompt_tokens_details?.cached_tokens === 'number') {
-            cacheReadTokens = u.prompt_tokens_details.cached_tokens;
-          } else if (typeof u.cache_read_input_tokens === 'number') {
-            cacheReadTokens = u.cache_read_input_tokens;
-          }
-          if (typeof u.cache_creation_input_tokens === 'number') {
-            cacheWriteTokens = u.cache_creation_input_tokens;
-          }
-        }
-      },
       onTextChunk: (wireText) => {
         tokenCount++;
         accumulatedStreamText += wireText;
@@ -14732,7 +14722,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       }
     });
 
-    console.log(`[Pateway ${THREEROUTER_MODEL} (${activeVariantLabel}) Stream Complete]: ${tokenCount} chunks | ⚡ Cache HIT: ${cacheReadTokens} | 📝 Cache WRITE: ${cacheWriteTokens}`);
+    console.log(`[Pateway ${THREEROUTER_MODEL} (${activeVariantLabel}) Stream Complete]: ${tokenCount} chunks`);
     return;
   } catch (err) {
     console.error('[Chat Stream 500]', err);
