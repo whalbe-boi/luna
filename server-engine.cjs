@@ -700,7 +700,7 @@ if (!fs.existsSync(SNAPSHOTS_DIR)) fs.mkdirSync(SNAPSHOTS_DIR, { recursive: true
 // ==================== API ENDPOINTS: PATEWAY CLAUDE OPUS 5.5 (DIALOGUE) + CEREBRAS GPT-OSS-120B + CELERIS (celeris-1 / Decision) ====================
 const THREEROUTER_API_URL = process.env.PATEWAY_API_URL || process.env.THREEROUTER_API_URL || 'https://api.pateway.ai/v1/messages';
 let THREEROUTER_API_KEY = process.env.PATEWAY_API_KEY || process.env.THREEROUTER_API_KEY || 'sk-ptw-132WnNu0lnw83cV90RuQDBTRnh0MQQAxdNqS0';
-const THREEROUTER_MODEL = process.env.PATEWAY_MODEL || process.env.THREEROUTER_MODEL || 'claude-fable-5-2';
+const THREEROUTER_MODEL = process.env.PATEWAY_MODEL || process.env.THREEROUTER_MODEL || 'claude-opus-5-5';
 const PATEWAY_API_URL = THREEROUTER_API_URL;
 const PATEWAY_MODEL = THREEROUTER_MODEL;
 const OPUS_MODEL = THREEROUTER_MODEL;
@@ -8464,7 +8464,7 @@ function stripActionsAndRolesForOpusHistory(rawAssistantText = '') {
 }
 
 function getStaticAstraSystemPrompt() {
-  return `You're claude-fable-5-2, the Master Comedy & Dark-Fantasy Dialogue Writer for an interactive anime visual novel RPG.
+  return `You're claude-opus-5-5, the Master Comedy & Dark-Fantasy Dialogue Writer for an interactive anime visual novel RPG.
 You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras GPT-OSS ALREADY wrote the ultra-short single-sentence Beat 0 [1000, "..."] camera narration (<=16 words, the same length as your own micro-beats) ("Resolved observable scene"), which the server automatically prepends at Beat 0. Treat GPT-OSS's causal plan as fixed truth. NEVER repeat, paraphrase, or rewrite Beat 0, never execute actions for the player, and never speak for UID 1001. Use ONLY the explicitly allowed NPC speaker UIDs (plus optional very short interleaved UID 1000 micro-beats where timing demands it).
 {ONLY UID 1002 (the Catgirl Angel, secret true name Coral) and UID 1001 (Protagonist) are canon, with 100% dynamic infinite possibilities: Protagonist can choose ANY path!}
 <Genre: Hilarious Konosuba-Style Comedy, Dark Fantasy, Isekai, SSS Difficulty, Necromancy, Human Supremacy, Demons>
