@@ -5920,7 +5920,60 @@ async function callCelerisFirstWithCerebrasFallback({
 
 const REINCARNATION_OPENING_NARRATION = 'The pedestal flashes HUMAN NECROMANCER with crossed out HERO in red as the angel waves you.';
 
+// [PRIOR STAGE] is fed to the resolver in token-compact tuple form, so the model routinely mirrors that
+// shape in "s.c"/"s.lm"/"s.snd". Accept both tuple and object pins, normalizing tuples into the object
+// form the rest of the engine consumes, instead of rejecting the whole turn as invalid.
+const STAGE_TUPLE_DISTS = new Set(['close', 'near', 'far', 'outside']);
+const STAGE_TUPLE_DIR_RX = /^(?:ahead|behind)(?:-left|-right)?$|^(?:left|right)$/;
+
+function normalizeServerStagePin(rawPin, kind) {
+  if (!rawPin || typeof rawPin !== 'object' || !Array.isArray(rawPin) || rawPin.length < 4) return rawPin;
+  const uid = Number(rawPin[0]);
+  if (!Number.isInteger(uid)) return rawPin;
+  const str = value => (typeof value === 'string' ? value.trim() : '');
+  const distAt = index => STAGE_TUPLE_DISTS.has(str(rawPin[index]).toLowerCase());
+  const dirAt = index => STAGE_TUPLE_DIR_RX.test(str(rawPin[index]).toLowerCase());
+  const stageRef = index => ({ dist: str(rawPin[index]).toLowerCase(), dir: str(rawPin[index + 1]).toLowerCase() });
+  if (kind === 'c' && distAt(1) && dirAt(2)) {
+    const pin = { uid, ...stageRef(1) };
+    const lvl = Number(rawPin[3]);
+    if (Number.isFinite(lvl)) pin.lvl = lvl;
+    if (typeof rawPin[4] === 'boolean') pin.is_moving = rawPin[4];
+    return pin;
+  }
+  if (kind === 'c' && str(rawPin[1]) && distAt(2) && dirAt(3)) {
+    const pin = { uid, n: str(rawPin[1]), ...stageRef(2) };
+    const lvl = Number(rawPin[4]);
+    if (Number.isFinite(lvl)) pin.lvl = lvl;
+    if (str(rawPin[5])) pin.r = str(rawPin[5]);
+    if (str(rawPin[6])) pin.sp = str(rawPin[6]);
+    if (str(rawPin[7])) pin.i = str(rawPin[7]);
+    if (str(rawPin[8])) pin.hp = str(rawPin[8]);
+    if (str(rawPin[9])) pin.mp = str(rawPin[9]);
+    if (typeof rawPin[10] === 'boolean') pin.is_moving = rawPin[10];
+    return pin;
+  }
+  if (kind === 'lm' && str(rawPin[1]) && distAt(2) && dirAt(3)) {
+    const pin = { uid, n: str(rawPin[1]), ...stageRef(2) };
+    if (str(rawPin[4])) pin.st = str(rawPin[4]);
+    return pin;
+  }
+  if (kind === 'snd' && str(rawPin[1]) && distAt(2) && dirAt(3)) {
+    return { uid, e: str(rawPin[1]), ...stageRef(2) };
+  }
+  return rawPin;
+}
+
+function normalizeServerStagePins(stage) {
+  if (!stage || typeof stage !== 'object' || Array.isArray(stage)) return stage;
+  for (const key of ['c', 'lm', 'snd']) {
+    if (Array.isArray(stage[key])) stage[key] = stage[key].map(pin => normalizeServerStagePin(pin, key));
+  }
+  return stage;
+}
+
 function validateGptTurnServer(parsed, priorStage, fullStats, opening) {
+  normalizeServerStagePins(parsed?.turn_json?.s);
   const { s, d, ...rest } = parsed.turn_json || {};
   const record = x => x !== null && typeof x === 'object' && !Array.isArray(x);
   const text = (x, max) => typeof x === 'string' && Boolean(x.trim()) && x.length <= max;
