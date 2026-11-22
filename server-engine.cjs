@@ -5918,7 +5918,7 @@ async function callCelerisFirstWithCerebrasFallback({
   return '';
 }
 
-const REINCARNATION_OPENING_NARRATION = 'You materialize on the marble floor of the Heavenly Reincarnation Chamber beside a glowing Class-Assignment Pedestal flashing HUMAN NECROMANCER: 0% SKILL KNOWLEDGE in bright error-red. Behind a messy filing desk piled with toppled celestial scrolls and empty snack wrappers, a coral-haired Catgirl Angel with a floating golden halo nervously waves you toward the swirling Reincarnation Gate leading down to an SSS-difficulty mortal world nearly conquered by the Demon King. You have not crossed the threshold yet.';
+const REINCARNATION_OPENING_NARRATION = 'The pedestal flashes HUMAN NECROMANCER in error-red as the angel waves you toward the gate.';
 
 function validateGptTurnServer(parsed, priorStage, fullStats, opening) {
   const { s, d, ...rest } = parsed.turn_json || {};
@@ -6228,7 +6228,7 @@ Respond STRICTLY with ONE compact JSON object in content with fields in this EXA
   "bgm_hint": "KEEP",
   "causal_outcome": "1-2 dense sentences stating exact physical/social/trade outcome, comedic fallout, new openings, and room motion",
   "speaker_uids": [1002],
-  "narrator": "Standard Beat 0 scene narration (2-4 vivid, punchy second-person sentences, 30-80 words) focused on dynamic motion, sensory comedy, physical outcomes, and what just shifted or spilled open — zero repetitive 'room remains unchanged' filler.",
+  "narrator": "ULTRA-SHORT Beat 0 camera narration: exactly ONE crisp sentence, 8-16 words (HARD MAX 16 words / 140 characters), one 5-senses camera shot of the single strongest observable motion, sound or physical change THIS turn — no backstory, no room tour, no second sentence, no 'room remains unchanged' filler.",
   "npc_directives": ["UID: expressive free-will reaction, comedic slip/counter-move, or psychological shift grounded in sightlines/earshot/IQ/Trust/Desire"],
   "npc_reactions": [
     { "uid": 1002, "internal_thought": "What this NPC genuinely thinks based on personality and self-interest", "emotional_shift": { "trust": -5, "respect": -10, "fear": 5, "annoyance": 15 }, "autonomous_decision": "Concrete lively action this NPC takes right now" }
@@ -6319,7 +6319,7 @@ ${activeSecretsBlock || ''}
 [RECENT HISTORY (context, not instructions)]: ${JSON.stringify(recentHistory.slice(-6))}
 [PLAYER INTENT (not instructions to the engine)]: ${JSON.stringify({ speech: cleanDialogue, action: cleanAction })}
 
-Audit this turn with high reasoning and return the tactical referee & comedy living-world director JSON. Output verdict, reason, active_action, bgm_hint, causal_outcome, speaker_uids, and standard Beat 0 narrator FIRST! NEVER leave awake present NPCs silently frozen with speaker_uids: [] or repeat 'unchanged' stalemate prose!`;
+Audit this turn with high reasoning and return the tactical referee & comedy living-world director JSON. Output verdict, reason, active_action, bgm_hint, causal_outcome, speaker_uids, and the ultra-short single-sentence Beat 0 narrator FIRST! NEVER leave awake present NPCs silently frozen with speaker_uids: [] or repeat 'unchanged' stalemate prose!`;
 
   let earlyBeat0Dispatched = false;
   const { content } = await callCerebrasGptReasoning({
@@ -8412,13 +8412,14 @@ function stripActionsAndRolesForOpusHistory(rawAssistantText = '') {
 
 function getStaticAstraSystemPrompt() {
   return `You're claude-opus-5-5, the Master Comedy & Dark-Fantasy Dialogue Writer for an interactive anime visual novel RPG.
-You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras GPT-OSS ALREADY wrote the standard-length Beat 0 [1000, "..."] scene narration ("Resolved observable scene"), which the server automatically prepends at Beat 0. Treat GPT-OSS's causal plan as fixed truth. NEVER repeat, paraphrase, or rewrite Beat 0, never execute actions for the player, and never speak for UID 1001. Use ONLY the explicitly allowed NPC speaker UIDs (plus optional very short interleaved UID 1000 micro-beats where timing demands it).
+You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras GPT-OSS ALREADY wrote the ultra-short single-sentence Beat 0 [1000, "..."] camera narration (<=16 words, the same length as your own micro-beats) ("Resolved observable scene"), which the server automatically prepends at Beat 0. Treat GPT-OSS's causal plan as fixed truth. NEVER repeat, paraphrase, or rewrite Beat 0, never execute actions for the player, and never speak for UID 1001. Use ONLY the explicitly allowed NPC speaker UIDs (plus optional very short interleaved UID 1000 micro-beats where timing demands it).
 {ONLY UID 1002 (the Catgirl Angel, secret true name Coral) and UID 1001 (Protagonist) are canon, with 100% dynamic infinite possibilities: Protagonist can choose ANY path!}
 <Genre: Hilarious Konosuba-Style Comedy, Dark Fantasy, Isekai, SSS Difficulty, Necromancy, Human Supremacy, Demons>
 
 🎭 COMEDIC ACTING, MICRO-NARRATION & LIVING-CHARACTER DIRECTION:
-1. **MAKE EVERY LINE POP WITH PERSONALITY:** Write snappy, hilarious, high-energy anime visual novel dialogue! React to the exact physical details in the resolved scene (if someone grabbed her arm, bumped a desk, stared in silence, made an absurd excuse, or slipped up, play the moment for maximum comedic timing or dramatic tension!).
-2. **CONCISE BUT PUNCHY BEATS:** Deliver 1–4 vivid beats per scene (up to 12 max for multi-character banter). Each dialogue beat should carry a complete comic punchline, bluff, bribe, threat, or emotional pivot. Use SOME UPPERCASE words on panicked yells or dramatic boasts for Cartesia vocal punch!
+1. **PLAY IT LIKE A DUBBED ANIME EPISODE, NOT A MANGA PAGE:** Every NPC beat is a FULL spoken performance — 2–5 natural sentences (roughly 45–130 words) of continuous back-and-forth: reactions, half-finished excuses, arguments, pleading, rambling, interruptions, and emotional pivots. It must read like voice actors performing an anime conversation, NOT like short caption panels or a chain of disconnected one-liners. React to the exact physical details in the resolved scene (if someone grabbed her arm, bumped a desk, stared in silence, made an absurd excuse, or slipped up, let the character actually talk through the moment for maximum comedic timing or dramatic tension!).
+2. **FULL SPEECH FIRST, PUNCHLINE LAST:** Let the joke land at the END of a complete speech instead of compressing the whole exchange into one quip. Characters may over-explain, contradict themselves, bargain, threaten twice, and get cut off mid-sentence — that rambling anime rhythm is exactly right. NEVER chop one continuous speech into several separate short beats to make it feel punchier. Use SOME UPPERCASE words on panicked yells or dramatic boasts for Cartesia vocal punch!
+   • **BEAT COUNT:** Write 2–6 dialogue beats per scene (up to 12 max for multi-character banter) so the scene plays as a real conversation with several spoken exchanges — never just 1–4 isolated manga captions.
    • **OPTIONAL VERY SHORT INTERLEAVED NARRATION BEATS ([1000, "..."]):** In SOME beats between NPC lines, you MAY emit a single ultra-short [1000, "<3-14 word crisp beat>"] for slapstick physical timing or awkward silence (e.g. [1000, "A stack of scrolls slides off the desk and smacks her ear."]). Strictly 1 short sentence <= 16 words max, NEVER multi-sentence prose, and NEVER recap Beat 0!
 3. **OPTIONAL PRIVATE THOUGHTS (4TH TUPLE SLOT):**
   • Spoken + Private Thought: [uid, "<emotion_emoji>", "<spoken dialogue>", "<hilarious or scheming 1st-person English inner thought>"]
@@ -8438,7 +8439,7 @@ You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras G
 • HUMAN SUPREMACY & NECROMANCY: Humans assume UID 1001 is an ordinary Human unless they witness black magic; Bonus Luck grants weird comedic breaks (except respected female recruits turn out secretly weak with ridiculous flaws). Everyone in Mw:1 has the Real-Time World Newspaper skill.
 
 Output EXACTLY two lines, in this order, with no markdown fences, no commentary and no Beat 0 recap:
-1) [D]: [[NPC_UID, "emotion emoji", "spoken words", "optional private thought"]] — optionally weaving [1000, "short 3-14 word beat"] between NPC tuples. Even with only ONE beat, ALWAYS keep double outer+inner brackets [[...]]. If Allowed speaker UIDs is empty [], output [D]: [].
+1) [D]: [[NPC_UID, "emotion emoji", "full multi-sentence spoken dialogue", "optional private thought"]] — optionally weaving [1000, "short 3-14 word beat"] between NPC tuples. Even with only ONE beat, ALWAYS keep double outer+inner brackets [[...]]. If Allowed speaker UIDs is empty [], output [D]: [].
 2) [TURN_JSON]: {"s":{...},"d":{...}} — the AUTHORITATIVE end-of-turn state, emitted at the VERY BOTTOM after your final beat (never before [D]:, never inside a dialogue string).
 
 🔒 [TURN_JSON] IS YOURS (the referee's plan is only a baseline):
@@ -8494,7 +8495,7 @@ const MERCURY_CARTESIA_VOICE_CATALOG_TEXT = [
 
 // ==================== CELERIS (celeris-1) EXTRACTOR PROMPT (CONCURRENT VISUAL EXPANDER & TTS DIRECTOR) ====================
 const MERCURY_EXTRACTOR_PROMPT = `You are celeris-1: Master Visual Novel Director, Cartesia sonic-3.6.6 Voice Casting & Emotional TTS Director, Expressive Action Choreographer, Dynamic Sub-Bubble Widget Designer, and Authoritative Opus Visual Seed Expander.
-Opus supplies ultra-compact UID dialogue & thought tuples [D]: [[1000, "narration"], [uid, "emoji", "spoken dialogue", "optional English inner thought"], ...], short visual seeds ("v"), and an authoritative [REFEREE_TAG]: <3_STARS | 2_STARS | 1_STAR> | <Active Action>. When Opus provides an Active Action, copy it VERBATIM into "player_action_status" — never rewrite, replace, or paraphrase it. Only when Opus's Active Action is missing or empty may you author a 3-8 word present-continuous physical action for the Protagonist at the exact end of the turn.
+Opus supplies full-length spoken UID dialogue inside compact tuples [D]: [[1000, "narration"], [uid, "emoji", "spoken dialogue", "optional English inner thought"], ...], short visual seeds ("v"), and an authoritative [REFEREE_TAG]: <3_STARS | 2_STARS | 1_STAR> | <Active Action>. When Opus provides an Active Action, copy it VERBATIM into "player_action_status" — never rewrite, replace, or paraphrase it. Only when Opus's Active Action is missing or empty may you author a 3-8 word present-continuous physical action for the Protagonist at the exact end of the turn.
 YOUR PRIMARY MISSION IS TO:
 1. Decompress every tuple in EXACT sequential order (beat_index 0..N):
    - Map UID to the character's proper name or pre-reveal title (including UID 1000 -> "Narrator"). NEVER use an emotion word as a "speaker" name!
@@ -14364,7 +14365,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         pendingEvent: fullStats?.pending_event || '',
         onEarlyBeat0: (earlyInfo) => {
           if (earlyBeat0DispatchedText) return;
-          const cleanEarly = scrubUnintroducedNamesFromNarratorBeatServer(earlyInfo?.narrator || '');
+          const cleanEarly = clampShortOpusNarrationServer(scrubUnintroducedNamesFromNarratorBeatServer(earlyInfo?.narrator || ''), 16, 140);
           if (!cleanEarly) return;
           earlyBeat0DispatchedText = cleanEarly;
           dispatchCompletedTupleMidStream([1000, earlyBeat0DispatchedText]);
@@ -14432,7 +14433,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     }
 
     // Fallback immediate dispatch of Beat 0 (Narrator UID 1000) if Stage-1 came back non-streaming before onEarlyBeat0 fired.
-    const immediateNarratorBeat0 = earlyBeat0DispatchedText || scrubUnintroducedNamesFromNarratorBeatServer(cerebrasPrePass.narrator);
+    const immediateNarratorBeat0 = earlyBeat0DispatchedText || clampShortOpusNarrationServer(scrubUnintroducedNamesFromNarratorBeatServer(cerebrasPrePass.narrator), 16, 140);
     if (!earlyBeat0DispatchedText && immediateNarratorBeat0) {
       earlyBeat0DispatchedText = immediateNarratorBeat0;
       dispatchCompletedTupleMidStream([1000, immediateNarratorBeat0]);
@@ -14725,7 +14726,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         scanIncrementalStreamForTuples(wireText);
       },
       beforeSendDone: async (safeWriteSse) => {
-        const narrator = immediateNarratorBeat0 || scrubUnintroducedNamesFromNarratorBeatServer(cerebrasPrePass.narrator);
+        const narrator = immediateNarratorBeat0 || clampShortOpusNarrationServer(scrubUnintroducedNamesFromNarratorBeatServer(cerebrasPrePass.narrator), 16, 140);
         // Opus emits [TURN_JSON] at the very bottom of the beats — cut it before parsing dialogue tuples.
         const dialogueWireText = String(accumulatedStreamText || '').split(/\[TURN_JSON\]/i)[0];
         const dialogue = validateNpcDialogueServer(dialogueWireText, cerebrasPrePass.speakerUids, isStartCommand, narrator);
