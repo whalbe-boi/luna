@@ -11213,6 +11213,13 @@ let LAST_LOCKED_EPOCH_INDEX = 0;
 const CHRONICLE_MAX_CHARS = 600;   // cached in Block 0 for a whole epoch -> cheap to keep rich
 const CHRONICLE_MSG_CHARS = 500;   // per evicted message fed to Mercury
 const OPUS_DEFAULT_CHRONICLE = '[CHR]:S:H;N:0%;Z:Heavenly Reincarnation Chamber;C:0CP;G:Tunic,Trousers,Boots,Tome';
+// Anthropic prompt cache markers. The default 5-minute cache is refreshed by every cache hit
+// (write 1.25x input, read 0.1x), so it pays off on the static system prompt and the epoch
+// snapshot block whenever consecutive turns reuse that prefix. Set OPUS_CACHE_TTL=1h only when
+// turns are more than 5 minutes apart: 1h cache writes are billed at 2x input.
+const OPUS_CACHE_CONTROL = process.env.OPUS_CACHE_TTL === '1h'
+  ? { type: 'ephemeral', ttl: '1h' }
+  : { type: 'ephemeral' };
 
 // ==================== PER-CAMPAIGN OPUS MEMORY (TURN-KEYED DELTAS, EPOCH SNAPSHOT) ====================
 const OPUS_SESSION_MEMORY = new Map();
@@ -13073,6 +13080,8 @@ function evaluatePreFlightActionFirewallServer({
   };
 }
 
+let patewayAnthropicCacheUnsupported = false;
+
 function executeThreerouterHttpVariant({
   urlStr,
   activeKey,
@@ -13411,6 +13420,7 @@ function executeThreerouterHttpVariant({
 async function openThreerouterOpusNoReasoningStream({
   activeKey,
   systemPrompt = '',
+  userContentBlocks = null,
   flatUserPromptString = '',
   flatMessages = [],
   signal
@@ -13420,8 +13430,35 @@ async function openThreerouterOpusNoReasoningStream({
   const resolvedSystem = systemPrompt || flatMessages.find(m => m?.role === 'system')?.content || '';
   const resolvedUserStr = flatUserPromptString || flatMessages.find(m => m?.role === 'user')?.content || '';
 
+  const nonEmptyBlocks = (Array.isArray(userContentBlocks) && userContentBlocks.length > 0
+    ? userContentBlocks
+    : [{ type: 'text', text: resolvedUserStr }])
+    .map(b => ({ type: 'text', text: String(b?.text || '').trim() }))
+    .filter(b => b.text.length > 0);
+
+  const cachedUserBlocks = nonEmptyBlocks.map((b, idx) =>
+    idx === 0 && b.text.length >= 256
+      ? { type: 'text', text: b.text, cache_control: OPUS_CACHE_CONTROL }
+      : b
+  );
+
   const variants = isAnthropicEndpoint
     ? [
+        ...(!patewayAnthropicCacheUnsupported
+          ? [{
+              label: `Pateway-Anthropic-SSE-Cached (${THREEROUTER_MODEL})`,
+              stream: true,
+              timeoutMs: 14000,
+              isCacheTier: true,
+              body: {
+                model: THREEROUTER_MODEL,
+                max_tokens: 4096,
+                system: [{ type: 'text', text: resolvedSystem, cache_control: OPUS_CACHE_CONTROL }],
+                messages: [{ role: 'user', content: cachedUserBlocks }],
+                stream: true
+              }
+            }]
+          : []),
         {
           label: `Pateway-Anthropic-SSE (${THREEROUTER_MODEL} · Stream)`,
           stream: true,
@@ -13498,6 +13535,10 @@ async function openThreerouterOpusNoReasoningStream({
 
     if (result.asyncIterableStream) {
       return { asyncIterableStream: result.asyncIterableStream, upstream: null, variantLabel: variant.label };
+    }
+
+    if (variant.isCacheTier && (result.httpStatus === 400 || result.httpStatus === 422)) {
+      patewayAnthropicCacheUnsupported = true;
     }
 
     lastErrText = result.errorText || 'Pateway request failed';
@@ -14535,6 +14576,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         const opened = await openThreerouterOpusNoReasoningStream({
           activeKey,
           systemPrompt: immutableSystemPromptText,
+          userContentBlocks,
           flatUserPromptString,
           flatMessages,
           signal: upstreamAbortController.signal
@@ -14558,6 +14600,8 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     }
 
     let tokenCount = 0;
+    let cacheReadTokens = 0;
+    let cacheWriteTokens = 0;
 
     let scannedUpToCursor = -1;
     let dArrayClosed = false;
@@ -14661,6 +14705,19 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       upstreamAbortController,
       alreadyFlushedHeaders: true,
       forwardText: false,
+      onData: (data) => {
+        const u = data?.usage || data?.message?.usage || data?.result?.usage || data?.usageDetails;
+        if (u && typeof u === 'object') {
+          if (typeof u.prompt_tokens_details?.cached_tokens === 'number') {
+            cacheReadTokens = u.prompt_tokens_details.cached_tokens;
+          } else if (typeof u.cache_read_input_tokens === 'number') {
+            cacheReadTokens = u.cache_read_input_tokens;
+          }
+          if (typeof u.cache_creation_input_tokens === 'number') {
+            cacheWriteTokens = u.cache_creation_input_tokens;
+          }
+        }
+      },
       onTextChunk: (wireText) => {
         tokenCount++;
         accumulatedStreamText += wireText;
@@ -14722,7 +14779,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       }
     });
 
-    console.log(`[Pateway ${THREEROUTER_MODEL} (${activeVariantLabel}) Stream Complete]: ${tokenCount} chunks`);
+    console.log(`[Pateway ${THREEROUTER_MODEL} (${activeVariantLabel}) Stream Complete]: ${tokenCount} chunks | ⚡ Cache HIT: ${cacheReadTokens} | 📝 Cache WRITE: ${cacheWriteTokens}`);
     return;
   } catch (err) {
     console.error('[Chat Stream 500]', err);
