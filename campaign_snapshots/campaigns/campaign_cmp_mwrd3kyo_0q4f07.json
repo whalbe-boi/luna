@@ -1,6 +1,6 @@
 {
   "campaignId": "cmp_mwrd3kyo_0q4f07",
-  "revision": 22,
+  "revision": 25,
   "generationToken": 1,
   "committedTurnIds": [],
   "playerState": {
@@ -479,7 +479,9 @@
       "recent_gambling_actions": [],
       "recent_player_activities": [],
       "pending_first_time_discoveries": [],
-      "player_true_name": "Whalberg"
+      "player_true_name": "Whalberg",
+      "overflow_ground_items": [],
+      "current_room_ground_items": []
     },
     "world_map_nodes": [],
     "dynamic_species_registry": {},
