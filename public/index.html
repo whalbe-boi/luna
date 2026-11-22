@@ -1971,6 +1971,34 @@
       min-height: 88px;
       position: relative;
     }
+    /* Upcoming Opus beat preview: revealed while the current beat's audio is still playing. */
+    .rpg-upcoming-preview {
+      display: none;
+      border: 1px dashed rgba(148, 163, 184, 0.42);
+      border-radius: 10px;
+      background: rgba(8, 12, 22, 0.78);
+      padding: 0.55rem 0.85rem 0.6rem;
+      font-size: 0.84rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+    .rpg-upcoming-label {
+      margin-bottom: 3px;
+      font-family: monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      opacity: 0.9;
+    }
+    .rpg-upcoming-text {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      color: #e2e8f0;
+      opacity: 0.84;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
     .rpg-inner-thought-box {
       display: none;
       margin-top: 6px;
@@ -5416,6 +5444,7 @@
               <span class="rpg-emotion-pill" id="rpgEmotionPill">[neutral]</span>
             </div>
             <div class="rpg-speech-text" id="rpgSpeech">“...”</div>
+            <div class="rpg-upcoming-preview" id="rpgUpcomingPreview" aria-live="polite"></div>
             <div class="rpg-inner-thought-box" id="rpgInnerThoughtBox"></div>
           </div>
         </div>
@@ -13365,11 +13394,47 @@
       return null;
     }
   
+    // Reveal the next spoken beat while the current beat's audio is still playing.
+    // The audio cursor stays strictly sequential: this only paints a dimmed preview,
+    // it never starts the next beat's TTS or changes activeDialogueIndex.
+    function renderUpcomingBeatPreview() {
+      const previewEl = document.getElementById('rpgUpcomingPreview');
+      if (!previewEl) return;
+      const hudOpen = Boolean(rpgHudContainer && rpgHudContainer.classList.contains('active'));
+      let upcoming = null;
+      if (hudOpen && Array.isArray(activeDialogueList)) {
+        for (let i = activeDialogueIndex + 1; i < activeDialogueList.length; i++) {
+          const candidate = activeDialogueList[i];
+          if (!candidate || candidate.is_silent_thought) continue;
+          if (String(candidate.dialogue || candidate.displayText || candidate.text || '').trim()) {
+            upcoming = candidate;
+            break;
+          }
+        }
+      }
+      const upcomingText = upcoming ? String(upcoming.dialogue || upcoming.displayText || upcoming.text || '').trim() : '';
+      if (!upcoming || !upcomingText) {
+        previewEl.style.display = 'none';
+        previewEl.textContent = '';
+        return;
+      }
+      const upcomingUid = Number(upcoming.uid) || 0;
+      const rawUpcomingName = String(upcoming.name || upcoming.speaker || 'NPC').trim();
+      const isUpcomingNarrator = upcoming.type === 'narration' || upcomingUid === 1000 || /^narrator$/i.test(rawUpcomingName);
+      const upcomingName = isUpcomingNarrator ? 'Narrator' : rawUpcomingName;
+      const upcomingTheme = getCharacterColor(upcomingName, null, upcoming.roleTag || upcoming.role || '', upcomingUid);
+      previewEl.innerHTML =
+        `<div class="rpg-upcoming-label" style="color:${upcomingTheme.main};">⏭ Up next <span style="opacity:0.55;">·</span> <strong>${escapeXml(upcomingName)}</strong></div>` +
+        `<div class="rpg-upcoming-text">“${escapeXml(upcomingText)}”</div>`;
+      previewEl.style.display = 'block';
+    }
+
     function renderDialogueStep() {
       stopTypewriter();
       if (!activeDialogueList || activeDialogueList.length === 0) return;
       const item = activeDialogueList[activeDialogueIndex];
       if (!item) return;
+      renderUpcomingBeatPreview();
 
       const rawName = item.name || item.speaker || 'NPC';
       const beatUid = Number(item.uid) || 0;
@@ -17341,6 +17406,7 @@
                       renderDialogueStep();
                     }
                   }
+                  renderUpcomingBeatPreview();
                   if (!streamRenderPending) {
                     streamRenderPending = true;
                     streamRafId = requestAnimationFrame(flushStreamUiUpdate);
@@ -17418,6 +17484,7 @@
                       if (safeImp !== 'none') faceWrapEl.classList.add(`impact-${safeImp}`);
                     }
                   }
+                  renderUpcomingBeatPreview();
                   continue;
                 }
 
@@ -17866,6 +17933,7 @@
                 rpgSpeaker.innerHTML = `${charIcon} ${escapeXml(cleanName)}${genderHtml}`;
               }
             }
+            renderUpcomingBeatPreview();
             safeSetItem('rpg_conversation_history', JSON.stringify(sanitizeForStorage(conversationHistory)));
           }
         };
@@ -18302,6 +18370,7 @@
             if (activeDialogueList.length > spokenFinalBeats.length) {
               activeDialogueList.length = spokenFinalBeats.length;
             }
+            renderUpcomingBeatPreview();
             const settingBadge = document.getElementById('rpgSettingBadge');
             if (settingBadge) settingBadge.textContent = activeZone || 'Heavenly Reincarnation Chamber';
             if (rpgStepIndicator) {
