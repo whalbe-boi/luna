@@ -5918,7 +5918,7 @@ async function callCelerisFirstWithCerebrasFallback({
   return '';
 }
 
-const REINCARNATION_OPENING_NARRATION = 'The pedestal flashes HUMAN NECROMANCER in error-red as the angel waves you toward the gate.';
+const REINCARNATION_OPENING_NARRATION = 'The pedestal flashes HUMAN NECROMANCER with crossed out H̶E̶R̶O̶ in red as the angel waves you.';
 
 function validateGptTurnServer(parsed, priorStage, fullStats, opening) {
   const { s, d, ...rest } = parsed.turn_json || {};

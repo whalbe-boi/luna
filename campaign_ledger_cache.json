@@ -5,28 +5,7 @@
     "landmark": {},
     "footstep": {}
   },
-  "perceptions_vault": {
-    "1002": {
-      "name": "Catgirl Angel",
-      "data": {
-        "uid": 1002,
-        "iq": "IQ 82 (Lazy Klutz Angel / Future Alcoholic)",
-        "sanity_pct": 85,
-        "sanity": "85% (Lucid)",
-        "outward_facade": "Casual, defensive & trying to hurry you through the gate",
-        "witnessed": "Clumsily stamped Human Necromancer (0 Skill Knowledge) instead of Hero",
-        "believes": "Hopes you walk through alone so she stays comfy in Heaven; if dragged into the mortal world, she loses her wings/halo, drops to Lv.1, and can only return home if you alone defeat the Demon King!",
-        "suspicion_level": "Flustered & Evasive",
-        "trust_score": "15%",
-        "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
-        "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
-        "hidden_agenda": "Sweep the Necromancer blunder under the rug and avoid getting dragged into the SSS mortal world.",
-        "opus_locked": false,
-        "is_fresh_this_turn": false,
-        "updated_at_clock": "Day 1, 12:00 AM"
-      }
-    }
-  },
+  "perceptions_vault": {},
   "dossier_vault": {},
   "appraised_uids": [],
   "allegiance_map": {},
@@ -34,92 +13,7 @@
   "unknown_to_real_map": {},
   "introduced_names": [],
   "in_mortal_world": false,
-  "location_states": {
-    "heavenly_reincarnation_chamber": {
-      "player": {
-        "x": 50,
-        "y": 50,
-        "spot": "Before the Reincarnation Gate",
-        "facing_uid": null
-      },
-      "characters": [
-        {
-          "uid": 1002,
-          "name": "Catgirl Angel",
-          "icon": "👼",
-          "dist": "near",
-          "dir": "ahead",
-          "paces": 9,
-          "x": 50,
-          "y": 19,
-          "facing_uid": null,
-          "facing_name": "",
-          "is_moving": false,
-          "species": "Catgirl Angel",
-          "role": "Catgirl Angel (Reincarnation Guide) ♀️",
-          "is_dead": false,
-          "life_status": "ALIVE",
-          "status": "Present in zone",
-          "level": 999,
-          "hp": "99999/99999",
-          "mp": "99999/99999",
-          "atk": 4800,
-          "def": 4500,
-          "mag": 9999,
-          "class_title": "Catgirl Angel (Reincarnation Guide) ♀️",
-          "growth_stage": "Celestial Angel Guide (Lv.999)",
-          "off_screen_activity": "",
-          "visual_seed": "",
-          "description": ""
-        }
-      ],
-      "landmarks": [
-        {
-          "uid": 2001,
-          "name": "Reincarnation Portal Gate",
-          "dist": "far",
-          "dir": "ahead",
-          "paces": 20,
-          "x": 50,
-          "y": 8,
-          "icon": "🏛️",
-          "type": "poi",
-          "is_important": true,
-          "state_tag": "intact",
-          "description": ""
-        },
-        {
-          "uid": 2002,
-          "name": "Class-Assignment Pedestal",
-          "dist": "close",
-          "dir": "left",
-          "paces": 2,
-          "x": 32,
-          "y": 50,
-          "icon": "🏛️",
-          "type": "poi",
-          "is_important": true,
-          "state_tag": "Assignment error",
-          "description": ""
-        },
-        {
-          "uid": 2003,
-          "name": "Messy Celestial Filing Desk",
-          "dist": "near",
-          "dir": "left",
-          "paces": 9,
-          "x": 19,
-          "y": 50,
-          "icon": "🏛️",
-          "type": "poi",
-          "is_important": false,
-          "state_tag": "Cluttered with loose scrolls",
-          "description": ""
-        }
-      ],
-      "ground_items": []
-    }
-  },
+  "location_states": {},
   "scars_by_location": {},
   "weather_by_location": {},
   "odyssey": {
@@ -130,6 +24,8 @@
     "doom_minutes": 0,
     "flags": {}
   },
-  "last_active_location": "Heavenly Reincarnation Chamber",
-  "player_true_name": "Whalberg"
+  "world_facts": [],
+  "rumor_mill": [],
+  "quest_log": [],
+  "promises": []
 }
