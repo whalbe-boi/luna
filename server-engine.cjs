@@ -700,7 +700,7 @@ if (!fs.existsSync(SNAPSHOTS_DIR)) fs.mkdirSync(SNAPSHOTS_DIR, { recursive: true
 // ==================== API ENDPOINTS: PATEWAY CLAUDE OPUS 5.5 (DIALOGUE) + CEREBRAS GPT-OSS-120B + CELERIS (celeris-1 / Decision) ====================
 const THREEROUTER_API_URL = process.env.PATEWAY_API_URL || process.env.THREEROUTER_API_URL || 'https://api.pateway.ai/v1/messages';
 let THREEROUTER_API_KEY = process.env.PATEWAY_API_KEY || process.env.THREEROUTER_API_KEY || 'sk-ptw-132WnNu0lnw83cV90RuQDBTRnh0MQQAxdNqS0';
-const THREEROUTER_MODEL = process.env.PATEWAY_MODEL || process.env.THREEROUTER_MODEL || 'claude-opus-5-5';
+const THREEROUTER_MODEL = process.env.PATEWAY_MODEL || process.env.THREEROUTER_MODEL || 'claude-fable-5-2';
 const PATEWAY_API_URL = THREEROUTER_API_URL;
 const PATEWAY_MODEL = THREEROUTER_MODEL;
 const OPUS_MODEL = THREEROUTER_MODEL;
@@ -8464,7 +8464,7 @@ function stripActionsAndRolesForOpusHistory(rawAssistantText = '') {
 }
 
 function getStaticAstraSystemPrompt() {
-  return `You're claude-opus-5-5, the Master Comedy & Dark-Fantasy Dialogue Writer for an interactive anime visual novel RPG.
+  return `You're claude-fable-5-2, the Master Comedy & Dark-Fantasy Dialogue Writer for an interactive anime visual novel RPG.
 You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras GPT-OSS ALREADY wrote the ultra-short single-sentence Beat 0 [1000, "..."] camera narration (<=16 words, the same length as your own micro-beats) ("Resolved observable scene"), which the server automatically prepends at Beat 0. Treat GPT-OSS's causal plan as fixed truth. NEVER repeat, paraphrase, or rewrite Beat 0, never execute actions for the player, and never speak for UID 1001. Use ONLY the explicitly allowed NPC speaker UIDs (plus optional very short interleaved UID 1000 micro-beats where timing demands it).
 {ONLY UID 1002 (the Catgirl Angel, secret true name Coral) and UID 1001 (Protagonist) are canon, with 100% dynamic infinite possibilities: Protagonist can choose ANY path!}
 <Genre: Hilarious Konosuba-Style Comedy, Dark Fantasy, Isekai, SSS Difficulty, Necromancy, Human Supremacy, Demons>
@@ -13246,7 +13246,8 @@ function executeThreerouterHttpVariant({
         ...(isAnthropicMessages
           ? {
               'x-api-key': activeKey,
-              'anthropic-version': '2023-06-01'
+              'anthropic-version': '2023-06-01',
+              'anthropic-beta': 'prompt-caching-2024-07-25'
             }
           : {
               'Authorization': 'Bearer ' + activeKey
@@ -13467,10 +13468,13 @@ function executeThreerouterHttpVariant({
   });
 }
 
-// Opus dialogue writer runs with ZERO reasoning: no thinking budget, no reasoning_effort and no
-// extended-thinking output. Anthropic endpoints OMIT the thinking field entirely (claude-opus-5-5
-// rejects thinking:{type:'disabled'}; omitting it is the no-thinking default), with a field-free
-// fallback variant, so a proxy that rejects the flag can never break the turn.
+// Opus dialogue writer runs with effectively zero reasoning output: the PRIMARY attempt is the
+// prompt-cached streaming variant with thinking:{type:'adaptive'} + output_config:{effort:'none'},
+// which lets the proxy cache the long system/user prefixes while emitting no visible reasoning.
+// It carries `anthropic-beta: prompt-caching-2024-07-25` (set in executeThreerouterHttpVariant) and
+// a 30s first-byte budget so the proxy can warm up instead of timing out the turn. The field-free
+// "Stream · No Thinking Field" variant, a plain SSE retry and the non-streaming JSON call stay
+// behind it as fallbacks only.
 async function openThreerouterOpusNoReasoningStream({
   activeKey,
   systemPrompt = '',
@@ -13498,33 +13502,26 @@ async function openThreerouterOpusNoReasoningStream({
 
   const variants = isAnthropicEndpoint
     ? [
+        // Primary: prompt-cached stream with adaptive thinking pinned to effort 'none', so the
+        // cacheable prefixes are reused while the model emits no visible reasoning.
         ...(!patewayAnthropicCacheUnsupported
           ? [{
-              label: `Pateway-Anthropic-SSE-Cached (${THREEROUTER_MODEL})`,
+              label: `Pateway-Anthropic-SSE-Cached (${THREEROUTER_MODEL} · Adaptive Thinking · Effort None)`,
               stream: true,
-              timeoutMs: 14000,
+              timeoutMs: 30000,
               isCacheTier: true,
               body: {
                 model: THREEROUTER_MODEL,
                 max_tokens: 4096,
+                thinking: { type: 'adaptive' },
+                output_config: { effort: 'none' },
                 system: [{ type: 'text', text: resolvedSystem, cache_control: OPUS_CACHE_CONTROL }],
                 messages: [{ role: 'user', content: cachedUserBlocks }],
                 stream: true
               }
             }]
           : []),
-        {
-          label: `Pateway-Anthropic-SSE (${THREEROUTER_MODEL} · Stream)`,
-          stream: true,
-          timeoutMs: 14000,
-          body: {
-            model: THREEROUTER_MODEL,
-            max_tokens: 4096,
-            system: resolvedSystem,
-            messages: [{ role: 'user', content: resolvedUserStr }],
-            stream: true
-          }
-        },
+        // Fallback: field-free stream, no thinking field anywhere in the payload.
         {
           label: `Pateway-Anthropic-SSE (${THREEROUTER_MODEL} · Stream · No Thinking Field)`,
           stream: true,
