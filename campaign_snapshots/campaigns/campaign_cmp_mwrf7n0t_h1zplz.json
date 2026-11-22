@@ -1,0 +1,39 @@
+{
+  "campaignId": "cmp_mwrf7n0t_h1zplz",
+  "revision": 2,
+  "generationToken": 1,
+  "committedTurnIds": [],
+  "playerState": null,
+  "playerStateIsPlaceholder": false,
+  "playerTrueName": "Protagonist",
+  "historySnapshots": {},
+  "ledger": {
+    "npc_registry": {},
+    "uid_registry": {
+      "npc": {},
+      "landmark": {},
+      "footstep": {}
+    },
+    "perceptions_vault": {},
+    "dossier_vault": {},
+    "appraised_uids": [],
+    "allegiance_map": {},
+    "active_secrets_vault": {},
+    "unknown_to_real_map": {},
+    "introduced_names": [],
+    "in_mortal_world": false,
+    "location_states": {},
+    "scars_by_location": {},
+    "weather_by_location": {},
+    "odyssey": {
+      "act_id": "prologue",
+      "generals": [],
+      "generals_defeated": 0,
+      "leagues": 600,
+      "doom_minutes": 0,
+      "flags": {}
+    }
+  },
+  "codex": {},
+  "dynamicSpecies": {}
+}
