@@ -3786,7 +3786,7 @@ async function synthesizeCartesiaSpeechServer({
       // 1. Primary: Persistent Multiplexed Cartesia Realtime WebSocket (/tts/websocket)
       //    Beat 0 (narrator) uses the realtime streaming context: incremental continue:true text pushes,
       //    PCM frames relayed to the client the moment Cartesia synthesizes them.
-      const useRealtimeStreaming = Boolean(onStreamChunk) && isNarrator;
+      const useRealtimeStreaming = Boolean(onStreamChunk);
       try {
         const wavBase64 = useRealtimeStreaming
           ? await synthesizeCartesiaSpeechStreamingViaWebSocket({
@@ -13540,8 +13540,9 @@ async function openThreerouterOpusNoReasoningStream({
     .map(b => ({ type: 'text', text: String(b?.text || '').trim() }))
     .filter(b => b.text.length > 0);
 
+  const lastHistoryCacheIdx = nonEmptyBlocks.length >= 3 ? (nonEmptyBlocks.length - 2) : -1;
   const cachedUserBlocks = nonEmptyBlocks.map((b, idx) =>
-    idx === 0 && b.text.length >= 256
+    ((idx === 0 && b.text.length >= 256) || idx === lastHistoryCacheIdx)
       ? { type: 'text', text: b.text, cache_control: OPUS_CACHE_CONTROL }
       : b
   );
@@ -13783,6 +13784,89 @@ async function generateAndCacheCharacterPortraitMidStream({
   } finally {
     IN_FLIGHT_CHARACTER_PROMISES.delete(neutralKey);
   }
+}
+
+// Incremental partial-tuple parser for live [D]: streaming.
+// Reads ONLY uid (elem 0), emoji/narration (elem 1), and spoken dialogue (elem 2).
+// Strictly stops at elem 2's closing quote so elem 3 (inner_thought) & [TURN_JSON] NEVER leak.
+function extractPartialOpenTupleFieldsServer(slice = '') {
+  if (!slice || slice[0] !== '[') return null;
+  const len = slice.length;
+  let i = 1;
+  while (i < len && /\s/.test(slice[i])) i++;
+
+  let uidStr = '';
+  while (i < len && /[0-9]/.test(slice[i])) {
+    uidStr += slice[i++];
+  }
+  if (!uidStr) return null;
+  while (i < len && /\s/.test(slice[i])) i++;
+  if (i >= len || slice[i] !== ',') return null;
+  i++;
+
+  const uid = Number(uidStr);
+  if (!Number.isInteger(uid)) return null;
+
+  const readPartialJsonString = (startPos) => {
+    let pos = startPos;
+    while (pos < len && /\s/.test(slice[pos])) pos++;
+    if (pos >= len || slice[pos] !== '"') return { started: false, value: '', closed: false, nextPos: pos };
+    pos++;
+    let out = '';
+    let closed = false;
+    while (pos < len) {
+      const ch = slice[pos];
+      if (ch === '"') {
+        closed = true;
+        pos++;
+        break;
+      }
+      if (ch === '\\') {
+        if (pos + 1 >= len) break; // incomplete escape at chunk boundary
+        const escCh = slice[pos + 1];
+        if (escCh === 'u') {
+          if (pos + 5 >= len) break; // incomplete \uXXXX escape
+          const hex = slice.slice(pos + 2, pos + 6);
+          if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+            out += String.fromCharCode(parseInt(hex, 16));
+            pos += 6;
+            continue;
+          }
+        }
+        const map = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
+        out += Object.prototype.hasOwnProperty.call(map, escCh) ? map[escCh] : escCh;
+        pos += 2;
+        continue;
+      }
+      out += ch;
+      pos++;
+    }
+    return { started: true, value: out, closed, nextPos: pos };
+  };
+
+  const elem1 = readPartialJsonString(i);
+  if (!elem1.started) return null;
+
+  if (uid === 1000) {
+    return { uid, emoji: '', spokenText: elem1.value, spokenClosed: elem1.closed };
+  }
+
+  if (!elem1.closed) {
+    return { uid, emoji: elem1.value, spokenText: '', spokenClosed: false };
+  }
+
+  let p = elem1.nextPos;
+  while (p < len && /\s/.test(slice[p])) p++;
+  if (p >= len || slice[p] !== ',') {
+    return { uid, emoji: elem1.value, spokenText: '', spokenClosed: false };
+  }
+  p++;
+
+  const elem2 = readPartialJsonString(p);
+  if (!elem2.started) {
+    return { uid, emoji: elem1.value, spokenText: '', spokenClosed: false };
+  }
+  return { uid, emoji: elem1.value, spokenText: elem2.value, spokenClosed: elem2.closed };
 }
 
 const handleClaudesonnetChatStream = async (req, res, campaignContext = null) => {
@@ -14051,6 +14135,124 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       return audioBase64;
     };
 
+    const prewarmedTtsBySigKey = new Map();
+    const resolveStreamBeatMeta = (uid) => {
+      const isNarrator = uid === 1000;
+      const eid = isNarrator ? 'narrator' : (REVERSE_UID_TO_ENTITY_MAP[uid] || '');
+      const existingCodexByUid = !isNarrator
+        ? Object.values(codexSnap).find(v => v && Number(v.uid) === uid)
+        : null;
+      const isKnownUid = isNarrator || uid === 1002 || Boolean(existingCodexByUid);
+      const speakerName = isNarrator
+        ? 'Narrator'
+        : (unknownToRealSnap[String(uid)]
+          || GLOBAL_UNKNOWN_TO_REAL_NAME_MAP[String(uid)]
+          || existingCodexByUid?.name
+          || (eid && CANONICAL_PRE_REVEAL_NICKNAMES[eid])
+          || `Realm Stranger #${Math.max(1, uid - 1002)}`);
+      const species = isNarrator
+        ? 'Narrator'
+        : (ENTITY_SPECIES_DEFAULTS_STREAM[eid] || existingCodexByUid?.species || 'Human');
+      const role = isNarrator
+        ? 'narrator'
+        : resolveDefaultRoleByEntityIdServer(eid, existingCodexByUid?.role || 'adventurer');
+      const icon = isNarrator
+        ? '📜'
+        : (ENTITY_ICON_DEFAULTS_STREAM[eid] || existingCodexByUid?.icon || '👤');
+      return { isNarrator, eid, existingCodexByUid, isKnownUid, speakerName, species, role, icon };
+    };
+
+    const startBeatTtsForKnownUid = ({ beatIndex, beatSig, uid, speakerName, species, role, instantProsody, isNarrator }) => {
+      const dedupKey = `${beatIndex}::${beatSig}`;
+      if (prewarmedTtsBySigKey.has(dedupKey)) {
+        return prewarmedTtsBySigKey.get(dedupKey);
+      }
+
+      const voiceProfile = resolveCharacterCartesiaVoiceProfile(speakerName, species, role, instantProsody.emotionBucket, { uid }, uid);
+      // Stream Beats 0 & 1 via Cartesia Realtime WebSocket so Beat 1 starts playing at 0ms when Beat 0 finishes!
+      const useRealtimeStream = (beatIndex === 0 && isNarrator) || (beatIndex === 1 && !isNarrator);
+      let streamSeq = 0;
+      let streamFrameCount = 0;
+      if (useRealtimeStream) {
+        emitMidStreamSseOrBroadcast({
+          beat_tts_stream_start: {
+            beat_index: beatIndex,
+            beat_sig: beatSig,
+            uid,
+            voice_id: voiceProfile.voice_id,
+            pitch: voiceProfile.pitch,
+            sample_rate: 24000,
+            tts_input: instantProsody.taggedInput
+          }
+        });
+      }
+      const onStreamChunk = useRealtimeStream
+        ? (pcmBuf) => {
+          streamFrameCount++;
+          emitMidStreamSseOrBroadcast({
+            beat_tts_stream_chunk: {
+              beat_index: beatIndex,
+              beat_sig: beatSig,
+              uid,
+              seq: streamSeq++,
+              sample_rate: 24000,
+              audio_base64: pcmBuf.toString('base64')
+            }
+          });
+        }
+        : null;
+
+      const ttsTask = synthesizeCartesiaSpeechServer({
+        ttsInput: instantProsody.taggedInput,
+        voiceId: voiceProfile.voice_id,
+        emotionBucket: instantProsody.emotionBucket,
+        isNarrator,
+        customCartesiaKeys: cartesiaApiKey,
+        priority: beatIndex <= 2 ? 'high' : 'background',
+        beatIndex,
+        prosody: {
+          emotion: instantProsody.emotion,
+          volume: instantProsody.volume,
+          speed: instantProsody.speed
+        },
+        onStreamChunk
+      })
+        .then(audioBase64 => {
+          if (useRealtimeStream) {
+            emitMidStreamSseOrBroadcast({
+              beat_tts_stream_end: {
+                beat_index: beatIndex,
+                beat_sig: beatSig,
+                uid,
+                frame_count: streamFrameCount,
+                streamed: streamFrameCount > 0
+              }
+            });
+          }
+          return emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, audioBase64);
+        })
+        .catch(() => {
+          if (useRealtimeStream) {
+            emitMidStreamSseOrBroadcast({
+              beat_tts_stream_end: {
+                beat_index: beatIndex,
+                beat_sig: beatSig,
+                uid,
+                frame_count: streamFrameCount,
+                streamed: streamFrameCount > 0
+              }
+            });
+          }
+          return emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, null);
+        });
+
+      prewarmedTtsBySigKey.set(dedupKey, ttsTask);
+      if (beatIndex === 0) beat0TtsPromise = ttsTask;
+      if (beatIndex <= 2) urgentStreamTasks.push(ttsTask);
+      else backgroundAssetTasks.push(ttsTask);
+      return ttsTask;
+    };
+
     const dispatchCompletedTupleMidStream = (parsedTuple) => {
       const unpacked = unpackOpusDialogueTupleServer(parsedTuple);
       if (!unpacked || unpacked.uid === 1001) return;
@@ -14086,28 +14288,9 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       const priorBeatForContext = lastDispatchedBeatText;
       if (cleanText) lastDispatchedBeatText = cleanText;
 
-      const eid = isNarrator ? 'narrator' : (REVERSE_UID_TO_ENTITY_MAP[uid] || '');
-      const existingCodexByUid = !isNarrator
-        ? Object.values(codexSnap).find(v => v && Number(v.uid) === uid)
-        : null;
-      const isKnownUid = isNarrator || uid === 1002 || Boolean(existingCodexByUid);
-
-      let speakerName = isNarrator
-        ? 'Narrator'
-        : (unknownToRealSnap[String(uid)]
-          || GLOBAL_UNKNOWN_TO_REAL_NAME_MAP[String(uid)]
-          || existingCodexByUid?.name
-          || (eid && CANONICAL_PRE_REVEAL_NICKNAMES[eid])
-          || `Realm Stranger #${Math.max(1, uid - 1002)}`);
-      let species = isNarrator
-        ? 'Narrator'
-        : (ENTITY_SPECIES_DEFAULTS_STREAM[eid] || existingCodexByUid?.species || 'Human');
-      let role = isNarrator
-        ? 'narrator'
-        : resolveDefaultRoleByEntityIdServer(eid, existingCodexByUid?.role || 'adventurer');
-      let icon = isNarrator
-        ? '📜'
-        : (ENTITY_ICON_DEFAULTS_STREAM[eid] || existingCodexByUid?.icon || '👤');
+      const meta = resolveStreamBeatMeta(uid);
+      const { existingCodexByUid, isKnownUid } = meta;
+      let { speakerName, species, role, icon } = meta;
 
       const instantProsody = deriveInstantCartesiaProsody(cleanText || combinedThought, emoji, isNarrator);
       const stickerObj = isNarrator ? null : getEmotionEmojiStickerClient(instantProsody.emotionBucket, emoji ? { emoji } : null);
@@ -14141,90 +14324,9 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         : (!isNarrator && uid >= 1002);
 
       if (isKnownUid) {
-        // 3A. Known UID (1000..1002 or cached 1012+): Fire Cartesia TTS at 0ms ONLY when spoken text exists!
+        // 3A. Known UID (1000..1002 or cached 1012+): Reuses pre-started TTS from Element 2 close if available!
         if (!isSilentThoughtOnly && cleanText) {
-          const voiceProfile = resolveCharacterCartesiaVoiceProfile(speakerName, species, role, instantProsody.emotionBucket, { uid }, uid);
-
-          // BEAT 0 REALTIME TTS: Beat 0 (Narrator uid 1000) streams directly via Cartesia WS!
-          const isRealtimeNarratorBeat = isNarrator && beatIndex === 0;
-          let streamSeq = 0;
-          let streamFrameCount = 0;
-          if (isRealtimeNarratorBeat) {
-            emitMidStreamSseOrBroadcast({
-              beat_tts_stream_start: {
-                beat_index: beatIndex,
-                beat_sig: beatSig,
-                uid,
-                voice_id: voiceProfile.voice_id,
-                pitch: voiceProfile.pitch,
-                sample_rate: 24000,
-                tts_input: instantProsody.taggedInput
-              }
-            });
-          }
-          const onStreamChunk = isRealtimeNarratorBeat
-            ? (pcmBuf) => {
-              streamFrameCount++;
-              emitMidStreamSseOrBroadcast({
-                beat_tts_stream_chunk: {
-                  beat_index: beatIndex,
-                  beat_sig: beatSig,
-                  uid,
-                  seq: streamSeq++,
-                  sample_rate: 24000,
-                  audio_base64: pcmBuf.toString('base64')
-                }
-              });
-            }
-            : null;
-
-          const ttsTask = synthesizeCartesiaSpeechServer({
-            ttsInput: instantProsody.taggedInput,
-            voiceId: voiceProfile.voice_id,
-            emotionBucket: instantProsody.emotionBucket,
-            isNarrator,
-            customCartesiaKeys: cartesiaApiKey,
-            priority: beatIndex <= 2 ? 'high' : 'background',
-            beatIndex,
-            prosody: {
-              emotion: instantProsody.emotion,
-              volume: instantProsody.volume,
-              speed: instantProsody.speed
-            },
-            onStreamChunk
-          })
-            .then(audioBase64 => {
-              if (isRealtimeNarratorBeat) {
-                emitMidStreamSseOrBroadcast({
-                  beat_tts_stream_end: {
-                    beat_index: beatIndex,
-                    beat_sig: beatSig,
-                    uid,
-                    frame_count: streamFrameCount,
-                    streamed: streamFrameCount > 0
-                  }
-                });
-              }
-              return emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, audioBase64);
-            })
-            .catch(() => {
-              if (isRealtimeNarratorBeat) {
-                emitMidStreamSseOrBroadcast({
-                  beat_tts_stream_end: {
-                    beat_index: beatIndex,
-                    beat_sig: beatSig,
-                    uid,
-                    frame_count: streamFrameCount,
-                    streamed: streamFrameCount > 0
-                  }
-                });
-              }
-              return emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, null);
-            });
-
-          if (beatIndex === 0) beat0TtsPromise = ttsTask;
-          if (beatIndex <= 2) urgentStreamTasks.push(ttsTask);
-          else backgroundAssetTasks.push(ttsTask);
+          startBeatTtsForKnownUid({ beatIndex, beatSig, uid, speakerName, species, role, instantProsody, isNarrator });
         }
 
         // Parallel Single-Beat Celeris-1 Micro-Enricher ONLY for non-Narrator beats (Narrator UID 1000 never needs tags!)
@@ -14859,6 +14961,138 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       }
     };
 
+    let partialScanCursor = -1;
+    let partialOuterClosed = false;
+    let lastStreamEmitAt = 0;
+    let lastStreamEmittedLen = 0;
+    let lastStreamBeatIdx = -1;
+    const prestartedSpokenTuples = new Set();
+
+    const scanPartialActiveBeatFromStream = () => {
+      if (partialOuterClosed) return;
+      const dIdx = accumulatedStreamText.indexOf('[D]:');
+      const trimmed = accumulatedStreamText.trimStart();
+      if (dIdx === -1 && !trimmed.startsWith('[[')) return;
+
+      const startAreaIdx = dIdx !== -1 ? dIdx + 4 : accumulatedStreamText.indexOf('[[');
+      if (startAreaIdx === -1) return;
+      const outerBracketIdx = accumulatedStreamText.indexOf('[', startAreaIdx);
+      if (outerBracketIdx === -1) return;
+
+      let cursor = partialScanCursor > outerBracketIdx ? partialScanCursor : (outerBracketIdx + 1);
+      const len = accumulatedStreamText.length;
+      let openTupleStart = -1;
+
+      while (cursor < len) {
+        while (cursor < len && /[\s,]/.test(accumulatedStreamText[cursor])) cursor++;
+        if (cursor >= len) break;
+        if (accumulatedStreamText[cursor] === ']') {
+          partialOuterClosed = true;
+          partialScanCursor = cursor + 1;
+          return;
+        }
+        if (accumulatedStreamText[cursor] !== '[') {
+          cursor++;
+          continue;
+        }
+
+        const tStart = cursor;
+        let depth = 0, inStr = false, esc = false, tEnd = -1;
+        for (let j = tStart; j < len; j++) {
+          const ch = accumulatedStreamText[j];
+          if (esc) { esc = false; continue; }
+          if (ch === '\\') { esc = true; continue; }
+          if (ch === '"') { inStr = !inStr; continue; }
+          if (!inStr) {
+            if (ch === '[') depth++;
+            else if (ch === ']') { depth--; if (depth === 0) { tEnd = j; break; } }
+          }
+        }
+        if (tEnd === -1) {
+          openTupleStart = tStart;
+          break;
+        }
+        partialScanCursor = tEnd + 1;
+        cursor = partialScanCursor;
+      }
+
+      if (openTupleStart === -1) return;
+      const fields = extractPartialOpenTupleFieldsServer(accumulatedStreamText.slice(openTupleStart));
+      if (!fields) return;
+
+      const { uid, emoji, spokenText, spokenClosed } = fields;
+      if (uid !== 1000 && (uid === 1001 || !allowedSpeakerUidSet.has(uid))) return;
+
+      // Strip any inline {...} thought markers even mid-stream so secrets NEVER flash during typing
+      let previewText = String(spokenText || '')
+        .replace(/\{[^{}]*\}/g, '')
+        .replace(/\{[^{}]*$/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .trimStart();
+
+      if (uid === 1000) {
+        previewText = scrubUnintroducedNamesFromNarratorBeatServer(previewText);
+        if (spokenClosed && isNearDuplicateBeat0Server(beat0CameraText, previewText)) return;
+      }
+
+      const activeBeatIdx = beatTracker.nextBeatIndex;
+      if (lastStreamBeatIdx !== activeBeatIdx) {
+        lastStreamBeatIdx = activeBeatIdx;
+        lastStreamEmittedLen = 0;
+        lastStreamEmitAt = 0;
+      }
+
+      const nowMs = Date.now();
+      const shouldEmitText = previewText.length > 0 && (
+        (spokenClosed && previewText.length !== lastStreamEmittedLen) ||
+        (previewText.length - lastStreamEmittedLen >= 8) ||
+        (nowMs - lastStreamEmitAt >= 45 && previewText.length !== lastStreamEmittedLen)
+      );
+
+      if (shouldEmitText) {
+        const meta = resolveStreamBeatMeta(uid);
+        lastStreamEmittedLen = previewText.length;
+        lastStreamEmitAt = nowMs;
+        emitMidStreamSseOrBroadcast({
+          beat_streaming: {
+            beat_index: activeBeatIdx,
+            uid,
+            speaker: meta.speakerName,
+            icon: meta.icon,
+            solEmoji: uid === 1000 ? '' : extractPureEmojiGlyphServer(emoji, ''),
+            partial_text: previewText,
+            spoken_complete: Boolean(spokenClosed)
+          }
+        });
+      }
+
+      // 0ms Audio Head-Start: the instant an NPC's spoken string (Element 2) closes with `"`,
+      // start Cartesia TTS right away without waiting for Element 3 (inner_thought) or closing `]`!
+      if (spokenClosed && uid >= 1002 && !prestartedSpokenTuples.has(openTupleStart)) {
+        const extracted = extractInnerBracesSecretServer(spokenText, false);
+        const cleanSpeech = String(extracted.text || '').trim();
+        if (cleanSpeech) {
+          prestartedSpokenTuples.add(openTupleStart);
+          const meta = resolveStreamBeatMeta(uid);
+          if (meta.isKnownUid) {
+            const cleanEmoji = extractPureEmojiGlyphServer(emoji, '');
+            const instantProsody = deriveInstantCartesiaProsody(cleanSpeech, cleanEmoji, false);
+            const beatSig = computeSigLocal(uid, cleanSpeech);
+            startBeatTtsForKnownUid({
+              beatIndex: activeBeatIdx,
+              beatSig,
+              uid,
+              speakerName: meta.speakerName,
+              species: meta.species,
+              role: meta.role,
+              instantProsody,
+              isNarrator: false
+            });
+          }
+        }
+      }
+    };
+
     const scanIncrementalStreamForTuples = (wireText = '') => {
       if (tupleScanner) {
         const completedTuples = tupleScanner.appendChunk(wireText);
@@ -14870,6 +15104,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       } else {
         scanIncrementalStreamForTuplesFallback();
       }
+      scanPartialActiveBeatFromStream();
     };
 
     await pipeUpstreamSseWithLifecycle({
@@ -14941,12 +15176,12 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         });
 
         await safeWriteSse('data: ' + JSON.stringify({ opus_done: true }) + '\n\n');
-        // Wait briefly for urgent audio/enrich (Beats 0-2), never blocking [DONE] on background images!
+        // Keep Beat 0 audio prioritized, and don't stall [DONE] waiting 2.5s on Beats 1-2 (they push via /api/events if still finalizing).
         if (beat0TtsPromise) {
           await Promise.race([beat0TtsPromise, new Promise(r => setTimeout(r, 2500))]);
         }
         if (urgentStreamTasks.length > 0) {
-          await Promise.race([Promise.allSettled(urgentStreamTasks), new Promise(r => setTimeout(r, 2500))]);
+          await Promise.race([Promise.allSettled(urgentStreamTasks), new Promise(r => setTimeout(r, 400))]);
         }
         if (backgroundAssetTasks.length > 0) {
           Promise.allSettled(backgroundAssetTasks).catch(() => {});
