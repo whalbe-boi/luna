@@ -5907,7 +5907,7 @@ async function callCelerisFirstWithCerebrasFallback({
       systemPrompt,
       userPrompt,
       activeKey: cerebrasKey,
-      reasoningEffort: 'low',
+      reasoningEffort: 'high',
       maxCompletionTokens,
       timeoutMs,
       jsonObject,
@@ -13514,7 +13514,7 @@ async function openThreerouterOpusNoReasoningStream({
                 model: THREEROUTER_MODEL,
                 max_tokens: 4096,
                 thinking: { type: 'adaptive' },
-                output_config: { effort: 'none' },
+                output_config: { effort: 'low' },
                 system: [{ type: 'text', text: resolvedSystem, cache_control: OPUS_CACHE_CONTROL }],
                 messages: [{ role: 'user', content: cachedUserBlocks }],
                 stream: true

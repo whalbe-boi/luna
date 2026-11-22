@@ -1,0 +1,312 @@
+{
+  "campaignId": "cmp_mwrnbnzc_ozqzgr",
+  "revision": 23,
+  "generationToken": 3,
+  "committedTurnIds": [],
+  "playerState": {
+    "partial_stats": {
+      "hp_necromancy_mana": "100/100 HP | Dark Mana: 10/10",
+      "sanity": "92% (Lucid)",
+      "fatigue": "5% (Rested)",
+      "trauma": "Unscathed",
+      "hunger": "0% (Full)",
+      "defense": "6 (Base: 3 + Gear: +3 | Evasion: +1 EVA)",
+      "magic_damage": "7 (0% Skill Knowledge | Dark Mana 10/10 + Gear: +0)",
+      "balance": "0 GP, 0 SP, 0 CP",
+      "day_time": "Day 1, 12:00 AM",
+      "nearby_entities": "Catgirl Angel",
+      "current_location": "Heavenly Reincarnation Chamber",
+      "current_objective": "Decide how to handle the Catgirl Angel's Necromancer class blunder before entering the mortal SSS world",
+      "current_bgm_prompt": "",
+      "current_bgm_zone_slug": "",
+      "current_bgm_combat_flag": false,
+      "spells": "0 Necromancy Skill Knowledge (Untaught) | Real-Time World Newspaper (Mortal World Universal Skill) | Bonus Luck",
+      "active_effects": "Accidental Human Necromancer (0 Skill Knowledge) | Bonus Luck | Difficulty: SSS",
+      "fairness": "3 Stars: Valid (SSS Hardcore Realism)"
+    },
+    "full_stats": {
+      "player_true_name": "",
+      "active_disguise_alias": "",
+      "title": "Accidental Human Necromancer (0 Skill Knowledge)",
+      "in_mortal_world": false,
+      "coral_mortal_nerfed": false,
+      "necromancy_knowledge_pct": 0,
+      "sanity_pct": 92,
+      "level": 1,
+      "exp": "0/100 (0% Necromancy Knowledge)",
+      "unassigned_sp": 0,
+      "destiny_debt": 0,
+      "max_pouch_slots": 9,
+      "currency": {
+        "gp": 0,
+        "sp": 0,
+        "cp": 0
+      },
+      "committed_turn_ids": [],
+      "appraised_characters": [],
+      "dead_characters": [],
+      "allegiance_map": {
+        "1002": "Neutral"
+      },
+      "dossier_vault": {},
+      "perceptions": {},
+      "newspaper_feed": [],
+      "overflow_ground_items": [],
+      "party_roster": [
+        {
+          "name": "Protagonist",
+          "hp": "100/100",
+          "mana": "10/10",
+          "species": "Human (Necromancer)",
+          "role": "Accidental Human Necromancer (0 Skill Knowledge)",
+          "status": "Standing before the Reincarnation Gate"
+        }
+      ],
+      "campaign_phase": "Prologue: Heavenly Reincarnation Chamber (SSS Difficulty)",
+      "demon_king_odyssey": {
+        "campaign_act": "Prologue: Heavenly Reincarnation Chamber",
+        "distance_to_citadel_leagues": 600,
+        "demon_generals_defeated": "0/6",
+        "world_threat_level": "SSS (Almost Conquered by the Demon King)"
+      },
+      "living_world": {
+        "world_clock": "Day 1, 12:00 AM",
+        "total_minutes_elapsed": 0,
+        "off_screen_event": "The Reincarnation Gate hums brightly above the celestial floor.",
+        "faction_alert_level": "Celestial Gate (Awaiting Descent)",
+        "active_schedules": {}
+      },
+      "skills_tree": [
+        {
+          "id": "sk_necromancy_zero",
+          "name": "Human Necromancer (0 Skill Knowledge)",
+          "type": "Accidental Role",
+          "cost": "Dark Mana",
+          "desc": "A lazy Catgirl Angel accidentally stamped Necromancer instead of Hero with 0 spell knowledge. You hold a 10/10 Dark Mana pool with zero learned spells yet."
+        },
+        {
+          "id": "sk_bonus_luck",
+          "name": "Bonus Luck",
+          "type": "Passive Anomaly",
+          "cost": "0",
+          "desc": "An anomalous passive blessing granting uncanny fortunate coincidences and narrow escapes. Any hidden caveats remain unknown."
+        },
+        {
+          "id": "sk_realtime_newspaper",
+          "name": "Real-Time World Newspaper",
+          "type": "Universal Mortal World Skill",
+          "cost": "Dormant in Heaven",
+          "desc": "Innate broadcast skill shared by everyone inside the mortal world. Streams real-time realm headlines, Demon King alerts, and public rumors upon descent."
+        }
+      ],
+      "achievements": [
+        {
+          "id": "ach_wrong_class",
+          "name": "Wrong Role, Wrong Angel",
+          "icon": "💀",
+          "desc": "Summoned to the Reincarnation Gate and accidentally assigned Human Necromancer (0 Skill Knowledge) by a Catgirl Angel."
+        }
+      ],
+      "factions": [
+        {
+          "name": "Heavenly Reincarnation Bureau",
+          "standing": "0"
+        },
+        {
+          "name": "Catgirl Angel (Assigned Guide)",
+          "standing": "-25"
+        }
+      ],
+      "quest_dossier": {
+        "main_objective": "Decide how to deal with the Catgirl Angel's Necromancer blunder before entering the mortal SSS world",
+        "incomplete_sub_objectives": [
+          "Address the Catgirl Angel over assigning you Human Necromancer with 0 skill knowledge",
+          "Decide how to handle the Catgirl Angel and the Reincarnation Gate into the mortal SSS world"
+        ],
+        "completed_objectives": [],
+        "environmental_status": "Shimmering golden clouds, humming Reincarnation Gate, blinking red error pedestal, scattered celestial scrolls",
+        "audit_paces_remaining": 85
+      },
+      "equipped_loadout": {
+        "head": null,
+        "chest": {
+          "slot": 1,
+          "name": "Plain Reincarnation Tunic",
+          "icon": "🥋",
+          "stat_bonus": "+2 DEF",
+          "rarity": "Common",
+          "equip_slot": "chest"
+        },
+        "legs": {
+          "slot": 2,
+          "name": "Traveler's Cloth Trousers",
+          "icon": "👖",
+          "stat_bonus": "+1 DEF",
+          "rarity": "Common",
+          "equip_slot": "legs"
+        },
+        "feet": {
+          "slot": 3,
+          "name": "Sturdy Leather Boots",
+          "icon": "👟",
+          "stat_bonus": "+1 EVA",
+          "rarity": "Common",
+          "equip_slot": "feet"
+        },
+        "right_hand": null,
+        "left_hand": null
+      },
+      "pouch_inventory": [
+        {
+          "slot": 1,
+          "icon": "🥋",
+          "name": "Plain Reincarnation Tunic",
+          "qty": 1,
+          "desc": "Simple human traveler tunic issued by the Reincarnation Gate (+2 DEF).",
+          "rarity": "Common",
+          "worth": "1 SP",
+          "stat_bonus": "+2 DEF",
+          "equip_slot": "chest",
+          "equipped_slot": "chest",
+          "equipped": true
+        },
+        {
+          "slot": 2,
+          "icon": "👖",
+          "name": "Traveler's Cloth Trousers",
+          "qty": 1,
+          "desc": "Durable dark trousers suited for rough mortal roads (+1 DEF).",
+          "rarity": "Common",
+          "worth": "1 SP",
+          "stat_bonus": "+1 DEF",
+          "equip_slot": "legs",
+          "equipped_slot": "legs",
+          "equipped": true
+        },
+        {
+          "slot": 3,
+          "icon": "👟",
+          "name": "Sturdy Leather Boots",
+          "qty": 1,
+          "desc": "Practical leather boots for quick escapes in an SSS-difficulty realm (+1 EVA).",
+          "rarity": "Common",
+          "worth": "1 SP",
+          "stat_bonus": "+1 EVA",
+          "equip_slot": "feet",
+          "equipped_slot": "feet",
+          "equipped": true
+        },
+        {
+          "slot": 4,
+          "icon": "📖",
+          "name": "Sealed Necromancer's Tome (0% Deciphered)",
+          "qty": 1,
+          "desc": "Unreadable dark-parchment manual stuffed into your pocket at the Reincarnation Gate.",
+          "rarity": "Uncommon",
+          "worth": "0 CP",
+          "stat_bonus": "+1 Dark Insight",
+          "equip_slot": "hand",
+          "equipped_slot": null,
+          "equipped": false
+        },
+        {
+          "slot": 5,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false
+        },
+        {
+          "slot": 6,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false
+        },
+        {
+          "slot": 7,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false
+        },
+        {
+          "slot": 8,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false
+        },
+        {
+          "slot": 9,
+          "icon": "📦",
+          "name": "Empty Slot",
+          "qty": 0,
+          "desc": "Available storage",
+          "rarity": "None",
+          "worth": "0 CP",
+          "stat_bonus": null,
+          "equip_slot": "none",
+          "equipped_slot": null,
+          "equipped": false
+        }
+      ]
+    }
+  },
+  "playerStateIsPlaceholder": false,
+  "playerTrueName": "",
+  "historySnapshots": {},
+  "ledger": {
+    "npc_registry": {},
+    "uid_registry": {
+      "npc": {},
+      "landmark": {},
+      "footstep": {}
+    },
+    "perceptions_vault": {},
+    "dossier_vault": {},
+    "appraised_uids": [],
+    "allegiance_map": {},
+    "active_secrets_vault": {},
+    "unknown_to_real_map": {},
+    "introduced_names": [],
+    "in_mortal_world": false,
+    "location_states": {},
+    "scars_by_location": {},
+    "weather_by_location": {},
+    "odyssey": {
+      "act_id": "prologue",
+      "generals": [],
+      "generals_defeated": 0,
+      "leagues": 600,
+      "doom_minutes": 0,
+      "flags": {}
+    }
+  },
+  "codex": {},
+  "dynamicSpecies": {}
+}
