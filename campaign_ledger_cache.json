@@ -7,24 +7,23 @@
   },
   "perceptions_vault": {
     "1002": {
-      "uid": 1002,
       "name": "Catgirl Angel",
       "data": {
+        "uid": 1002,
         "iq": "IQ 82 (Lazy Klutz Angel / Future Alcoholic)",
+        "sanity_pct": 85,
+        "sanity": "85% (Lucid)",
         "outward_facade": "Casual, defensive & trying to hurry you through the gate",
         "witnessed": "Clumsily stamped Human Necromancer (0 Skill Knowledge) instead of Hero",
-        "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
-        "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
         "believes": "Hopes you walk through alone so she stays comfy in Heaven; if dragged into the mortal world, she loses her wings/halo, drops to Lv.1, and can only return home if you alone defeat the Demon King!",
         "suspicion_level": "Flustered & Evasive",
         "trust_score": "15%",
+        "active_desire": "Push you into the mortal world fast, dodge blame, and take a nap",
+        "autonomous_intent": "Make excuses and nudge you toward the Reincarnation Gate before you make a scene",
         "hidden_agenda": "Sweep the Necromancer blunder under the rug and avoid getting dragged into the SSS mortal world.",
-        "sanity_pct": 85,
-        "sanity": "85% (Lucid)",
         "opus_locked": false,
-        "is_fresh_this_turn": true,
-        "updated_at_clock": "Day 1, 12:00 AM",
-        "uid": 1002
+        "is_fresh_this_turn": false,
+        "updated_at_clock": "Day 1, 12:00 AM"
       }
     }
   },
@@ -55,7 +54,7 @@
           "y": 19,
           "facing_uid": null,
           "facing_name": "",
-          "is_moving": true,
+          "is_moving": false,
           "species": "Catgirl Angel",
           "role": "Catgirl Angel (Reincarnation Guide) ♀️",
           "is_dead": false,
