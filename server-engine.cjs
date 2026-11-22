@@ -6306,6 +6306,29 @@ function extractJsonStringFieldFallbackServer(rawPartial = '', fieldName = '') {
   try { return String(JSON.parse(`"${m[1]}"`)); } catch { return null; }
 }
 
+// Reads a closed JSON array of integers (e.g. "speaker_uids": [1002]) out of a partially streamed
+// Stage-1 JSON body. Returns null while the array is still arriving so callers keep buffering.
+function extractJsonIntArrayFieldFallbackServer(rawPartial = '', fieldName = '') {
+  const src = String(rawPartial || '');
+  const keyRx = new RegExp(`"${fieldName}"\\s*:\\s*\\[`);
+  const keyMatch = keyRx.exec(src);
+  if (!keyMatch) return null;
+  const startIdx = keyMatch.index + keyMatch[0].length;
+  const endIdx = src.indexOf(']', startIdx);
+  if (endIdx === -1) return null;
+  const body = src.slice(startIdx, endIdx).trim();
+  if (!body) return [];
+  const nums = [];
+  for (const part of body.split(',')) {
+    const clean = part.trim();
+    if (!clean) continue;
+    const n = Number(clean);
+    if (!Number.isInteger(n)) return null;
+    nums.push(n);
+  }
+  return nums;
+}
+
 function clampShortOpusNarrationServer(rawText = '', maxWords = 16, maxChars = 140) {
   if (opusBeatStreamModule?.clampShortOpusNarration) {
     return opusBeatStreamModule.clampShortOpusNarration(rawText, maxWords, maxChars);
@@ -6345,7 +6368,8 @@ async function runCerebrasSequentialPrePass({
   fullStats = {},
   recentHistory = [],
   pendingEvent = '',
-  onEarlyBeat0 = null
+  onEarlyBeat0 = null,
+  onEarlyPlan = null
 }) {
   if (resolveCerebrasKeyPool(cerebrasKey).length === 0) {
     throw new Error('No Cerebras API key is configured. Add one in API Keys. No story action was applied.');
@@ -6375,6 +6399,26 @@ ${activeSecretsBlock || ''}
 Audit this turn with high reasoning and return the tactical referee & comedy living-world director JSON. Output verdict, reason, active_action, bgm_hint, causal_outcome, speaker_uids, and the ultra-short single-sentence Beat 0 narrator FIRST! NEVER leave awake present NPCs silently frozen with speaker_uids: [] or repeat 'unchanged' stalemate prose!`;
 
   let earlyBeat0Dispatched = false;
+  let earlyPlanDispatched = false;
+  const emitEarlyPlanHead = (partialVerdict, trimmedNarr, partialJson) => {
+    if (earlyPlanDispatched || typeof onEarlyPlan !== 'function') return;
+    // The Opus dialogue writer only needs the plan head (verdict + allowed speaker UIDs + the
+    // resolved Beat 0 scene) to open its stream, so hand it over before [TURN_JSON] finishes.
+    const partialSpeakers = extractJsonIntArrayFieldFallbackServer(partialJson, 'speaker_uids');
+    if (partialSpeakers === null || partialSpeakers.length === 0) return;
+    earlyPlanDispatched = true;
+    try {
+      onEarlyPlan({
+        verdict: partialVerdict,
+        narrator: trimmedNarr,
+        speakerUids: partialSpeakers,
+        reason: extractJsonStringFieldFallbackServer(partialJson, 'reason') || '',
+        active_action: extractJsonStringFieldFallbackServer(partialJson, 'active_action') || '',
+        bgm_hint: extractJsonStringFieldFallbackServer(partialJson, 'bgm_hint') || 'KEEP',
+        causal_outcome: extractJsonStringFieldFallbackServer(partialJson, 'causal_outcome') || ''
+      });
+    } catch (_) {}
+  };
   const { content } = await callCerebrasGptReasoning({
     systemPrompt: isStartCommand
       ? 'Initialize the canonical opening scene. Return only the JSON object in the user message, without additions. The server supplies the cast, landmarks, and narration.'
@@ -6386,9 +6430,8 @@ Audit this turn with high reasoning and return the tactical referee & comedy liv
     timeoutMs: 22000,
     promptCacheKey,
     jsonObject: true,
-    onContentPartial: (!isStartCommand && typeof onEarlyBeat0 === 'function')
+    onContentPartial: (!isStartCommand && (typeof onEarlyBeat0 === 'function' || typeof onEarlyPlan === 'function'))
       ? (partialJson) => {
-          if (earlyBeat0Dispatched) return;
           const partialVerdict = extractJsonStringFieldFallbackServer(partialJson, 'verdict');
           if (!partialVerdict || partialVerdict === '1_STAR') return;
           const partialNarrator = extractJsonStringFieldFallbackServer(partialJson, 'narrator');
@@ -6396,16 +6439,19 @@ Audit this turn with high reasoning and return the tactical referee & comedy liv
           const trimmedNarr = partialNarrator.trim();
           if (trimmedNarr.split(/\s+/).length < 3) return;
           if (/\[(?:TURN_JSON|GAME_STATE_JSON|SOL_STATE_JSON|REFEREE_TAG|REFEREE_HEADER|D|NPC|BGM)\]/i.test(trimmedNarr)) return;
-          earlyBeat0Dispatched = true;
-          try {
-            onEarlyBeat0({
-              verdict: partialVerdict,
-              narrator: trimmedNarr,
-              active_action: extractJsonStringFieldFallbackServer(partialJson, 'active_action') || '',
-              bgm_hint: extractJsonStringFieldFallbackServer(partialJson, 'bgm_hint') || 'KEEP',
-              causal_outcome: extractJsonStringFieldFallbackServer(partialJson, 'causal_outcome') || ''
-            });
-          } catch (_) {}
+          if (!earlyBeat0Dispatched && typeof onEarlyBeat0 === 'function') {
+            earlyBeat0Dispatched = true;
+            try {
+              onEarlyBeat0({
+                verdict: partialVerdict,
+                narrator: trimmedNarr,
+                active_action: extractJsonStringFieldFallbackServer(partialJson, 'active_action') || '',
+                bgm_hint: extractJsonStringFieldFallbackServer(partialJson, 'bgm_hint') || 'KEEP',
+                causal_outcome: extractJsonStringFieldFallbackServer(partialJson, 'causal_outcome') || ''
+              });
+            } catch (_) {}
+          }
+          emitEarlyPlanHead(partialVerdict, trimmedNarr, partialJson);
         }
       : null
   }).catch(() => {
@@ -14395,7 +14441,37 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       snd: compactState.fsArr
     };
 
-    const cerebrasPrePass = await runCerebrasSequentialPrePass({
+    // Beat 0 and the Opus dialogue writer share one Stage-1 head start: the moment GPT-OSS has
+    // streamed the plan head (verdict + allowed speaker UIDs + Beat 0 narration) the Opus HTTP
+    // stream opens, so NPC beats are already flowing while the Beat 0 HUD is on screen instead of
+    // waiting for Stage-1's full [TURN_JSON] baseline before Opus is even contacted.
+    let earlyPlanHead = null;
+    let resolveEarlyPlanHead = null;
+    const earlyPlanHeadPromise = new Promise(resolve => { resolveEarlyPlanHead = resolve; });
+    const captureEarlyPlanHead = (plan) => {
+      if (earlyPlanHead || !plan) return;
+      const headSpeakers = Array.isArray(plan.speakerUids) ? plan.speakerUids : [];
+      // An empty speaker list still needs the full pre-pass safety net before the turn is declared
+      // Narrator-only, so those turns keep waiting on cerebrasPrePassOutcomePromise below.
+      if (headSpeakers.length === 0) return;
+      earlyPlanHead = plan;
+      resolveEarlyPlanHead(plan);
+    };
+    // /start is fully deterministic (canonical Beat 0 narration, only UID 1002 speaks), so the Opus
+    // stream opens at t=0 — well before the Beat 0 HUD finishes its first narrator line.
+    if (isStartCommand) {
+      captureEarlyPlanHead({
+        verdict: '3_STARS',
+        narrator: REINCARNATION_OPENING_NARRATION,
+        speakerUids: [1002],
+        reason: 'Campaign opening initialized at the Reincarnation Gate.',
+        active_action: 'Standing before the Reincarnation Gate',
+        bgm_hint: 'CHANGE | playful whimsical comedic orchestral instrumental',
+        causal_outcome: ''
+      });
+    }
+
+    const cerebrasPrePassPromise = runCerebrasSequentialPrePass({
         isStartCommand,
         cleanDialogue,
         cleanAction,
@@ -14417,74 +14493,40 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
           if (!cleanEarly) return;
           earlyBeat0DispatchedText = cleanEarly;
           dispatchCompletedTupleMidStream([1000, earlyBeat0DispatchedText]);
-        }
+        },
+        onEarlyPlan: captureEarlyPlanHead
     });
 
-    if (!isStartCommand && cerebrasPrePass?.verdict === '1_STAR') {
-      const posture = cerebrasPrePass.active_action
-        || fullStats?.partial_stats?.player_action_status
-        || 'Standing in the current scene';
-      const reasonClean = String(cerebrasPrePass.reason || cerebrasPrePass.reject_reason || 'Action violates Hardcore mortal realism or present-tense rules').replace(/"/g, "'");
-      const vetoMeta = {
-        verdict: '1_STAR',
-        reason: reasonClean,
-        active_action: posture,
-        bgm_hint: 'KEEP',
-        causal_outcome: cerebrasPrePass.causal_outcome || '',
-        math_deltas: { cp: 0, hp: 0, san: 0, t: 0 }
-      };
-      const vetoDialogue = '[D]: ' + JSON.stringify([[1000, `Your action does not go through. ${reasonClean} The scene stays as it was; you can try a different action.`]]);
-      res.write('data: ' + JSON.stringify({ prepass_status: 'veto', ...vetoMeta, prepass_meta: vetoMeta }) + '\n\n');
-      res.write('data: ' + JSON.stringify({ token: vetoDialogue }) + '\n\n');
-      res.write('data: [DONE]\n\n');
-      res.end();
-      return;
-    }
+    const cerebrasPrePassOutcomePromise = cerebrasPrePassPromise.then(
+      value => ({ ok: true, value }),
+      error => ({ ok: false, error })
+    );
+    const planHeadFromPrePass = (prePass) => ({
+      verdict: prePass?.verdict || '3_STARS',
+      narrator: prePass?.narrator || '',
+      speakerUids: Array.isArray(prePass?.speakerUids) ? prePass.speakerUids : [],
+      reason: prePass?.reason || '',
+      active_action: prePass?.active_action || '',
+      bgm_hint: prePass?.bgm_hint || 'KEEP',
+      causal_outcome: prePass?.causal_outcome || '',
+      npc_directives: prePass?.npc_directives || [],
+      npc_reactions: prePass?.npc_reactions || [],
+      inner_thought_targets: prePass?.inner_thought_targets || [],
+      turnJson: prePass?.turnJson || null
+    });
 
-    const prepassMetaPayload = {
-      verdict: cerebrasPrePass.verdict || '3_STARS',
-      reason: cerebrasPrePass.reason || 'Valid present-tense mortal action.',
-      active_action: cerebrasPrePass.active_action || '',
-      bgm_hint: cerebrasPrePass.bgm_hint || 'KEEP',
-      causal_outcome: cerebrasPrePass.causal_outcome || '',
-      math_deltas: cerebrasPrePass.math_deltas || {}
-    };
-    res.write('data: ' + JSON.stringify({
-      prepass_status: 'done',
-      ...prepassMetaPayload,
-      prepass_meta: prepassMetaPayload
-    }) + '\n\n');
-
-    const allowedSpeakerUidSet = new Set((cerebrasPrePass.speakerUids || []).map(Number).filter(Number.isInteger));
-
-    // Stage-1 pre-pass transformations: apply BEFORE NPC streaming so mid-stream TTS voice casting & Leonardo portraits already use the transformed form!
-    if (Array.isArray(cerebrasPrePass?.transformations) && cerebrasPrePass.transformations.length > 0) {
-      cerebrasPrePass.transformations.forEach(tr => {
-        if (!tr || (!tr.uid && !tr.name)) return;
-        const trUid = Number(tr.uid) || resolveEntityUid(tr.name || '', tr.role || '');
-        if (!trUid || trUid <= 1001) return;
-        const trName = trUid === 1002 ? getUid1002DisplayNameServer() : (tr.name || `Entity_${trUid}`);
-        const locked = lockCharacterCodexEntry(trName, {
-          uid: trUid,
-          species: tr.species || 'Transformed Entity',
-          role: tr.role || 'Awakened Form',
-          icon: tr.icon || '✨',
-          face_description: tr.face_description || '',
-          visual_seed: tr.face_description || undefined,
-          transformed: true,
-          force_new_image: true
-        }, currentPhaseStr);
-        if (locked) {
-          codexSnap[trName] = { ...locked };
-        }
-      });
-    }
-
-    // Fallback immediate dispatch of Beat 0 (Narrator UID 1000) if Stage-1 came back non-streaming before onEarlyBeat0 fired.
-    const immediateNarratorBeat0 = earlyBeat0DispatchedText || clampShortOpusNarrationServer(scrubUnintroducedNamesFromNarratorBeatServer(cerebrasPrePass.narrator), 16, 140);
-    if (!earlyBeat0DispatchedText && immediateNarratorBeat0) {
-      earlyBeat0DispatchedText = immediateNarratorBeat0;
-      dispatchCompletedTupleMidStream([1000, immediateNarratorBeat0]);
+    let planHead = earlyPlanHead;
+    if (!planHead) {
+      const earlyRace = await Promise.race([
+        earlyPlanHeadPromise.then(head => ({ head })),
+        cerebrasPrePassOutcomePromise.then(outcome => ({ outcome }))
+      ]);
+      if (earlyRace.head) {
+        planHead = earlyRace.head;
+      } else {
+        if (!earlyRace.outcome.ok) throw earlyRace.outcome.error;
+        planHead = planHeadFromPrePass(earlyRace.outcome.value);
+      }
     }
 
     const turnParts = [];
@@ -14494,15 +14536,17 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       if (cleanDialogue) turnParts.push('[Protagonist Spoken Dialogue]: "' + cleanDialogue + '"');
       if (cleanAction) turnParts.push('[Protagonist Physical Action]: ' + cleanAction);
     }
-    const cerebrasDirectiveBlock = formatCerebrasPrePassForOpus(cerebrasPrePass);
+    const cerebrasDirectiveBlock = formatCerebrasPrePassForOpus(planHead);
     if (cerebrasDirectiveBlock) {
       turnParts.push(cerebrasDirectiveBlock);
     }
-    turnParts.push('Resolved observable scene: ' + JSON.stringify(cerebrasPrePass.narrator));
-    turnParts.push('Allowed speaker UIDs: ' + JSON.stringify(cerebrasPrePass.speakerUids));
-    turnParts.push('Authorized name reveals: ' + JSON.stringify(cerebrasPrePass.turnJson.d.nr || {}));
-    if (cerebrasPrePass.turnJson) {
-      turnParts.push('[CEREBRAS PLANNED TURN_JSON — BASELINE ONLY. Correct it to match the beats you actually write (final room, cast, facing, landmarks, sounds), then emit the corrected object as the final [TURN_JSON] line.]: ' + JSON.stringify(cerebrasPrePass.turnJson));
+    turnParts.push('Resolved observable scene: ' + JSON.stringify(planHead.narrator));
+    turnParts.push('Allowed speaker UIDs: ' + JSON.stringify(planHead.speakerUids));
+    // The planned [TURN_JSON] baseline (and any authorized name reveals inside it) only exists once
+    // Stage-1 finishes; a head-start turn lets Opus author its own corrected [TURN_JSON] instead.
+    if (planHead.turnJson) {
+      turnParts.push('Authorized name reveals: ' + JSON.stringify(planHead.turnJson?.d?.nr || {}));
+      turnParts.push('[CEREBRAS PLANNED TURN_JSON — BASELINE ONLY. Correct it to match the beats you actually write (final room, cast, facing, landmarks, sounds), then emit the corrected object as the final [TURN_JSON] line.]: ' + JSON.stringify(planHead.turnJson));
     }
 
     const composedUserTurn = turnParts.length > 0
@@ -14605,18 +14649,20 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       { role: 'user', content: flatUserPromptString }
     ];
 
-    let upstream = null;
-    let asyncIterableStream = null;
-    let activeVariantLabel = '';
-    let lastErrText = '';
+    // Open the Opus stream NOW — while the Beat 0 HUD is still on its first narrator line — and let
+    // its first dialogue tokens buffer in the socket while Stage-1 finishes its [TURN_JSON] baseline.
     const upstreamAbortController = new AbortController();
-
-    if (!Array.isArray(cerebrasPrePass.speakerUids) || cerebrasPrePass.speakerUids.length === 0) {
-      activeVariantLabel = 'Narrator-Only (0 NPC Speakers)';
-      asyncIterableStream = (async function* () {
-        yield { choices: [{ message: { content: '[D]: []' } }] };
-      })();
-    } else {
+    const opusOpenPromise = (async () => {
+      const headSpeakers = Array.isArray(planHead.speakerUids) ? planHead.speakerUids : [];
+      if (headSpeakers.length === 0) {
+        return {
+          variantLabel: 'Narrator-Only (0 NPC Speakers)',
+          asyncIterableStream: (async function* () {
+            yield { choices: [{ message: { content: '[D]: []' } }] };
+          })()
+        };
+      }
+      let lastOpenErrText = '';
       for (let k = 0; k < threerouterKeyPool.length; k++) {
         const activeKey = threerouterKeyPool[k];
         const maskedKey = activeKey.length > 14 ? activeKey.slice(0, 7) + '...' + activeKey.slice(-4) : 'sk-ptw-*';
@@ -14632,14 +14678,94 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         });
 
         if (opened.upstream || opened.asyncIterableStream) {
-          upstream = opened.upstream;
-          asyncIterableStream = opened.asyncIterableStream;
-          activeVariantLabel = opened.variantLabel || 'pateway-sse';
-          break;
+          return {
+            upstream: opened.upstream,
+            asyncIterableStream: opened.asyncIterableStream,
+            variantLabel: opened.variantLabel || 'pateway-sse'
+          };
         }
-        lastErrText = opened.lastErrText || 'Pateway connection failed';
+        lastOpenErrText = opened.lastErrText || 'Pateway connection failed';
       }
+      return { lastErrText: lastOpenErrText };
+    })();
+
+    const prePassOutcome = await cerebrasPrePassOutcomePromise;
+    if (!prePassOutcome.ok) throw prePassOutcome.error;
+    const cerebrasPrePass = prePassOutcome.value;
+
+    if (!isStartCommand && cerebrasPrePass?.verdict === '1_STAR') {
+      try { upstreamAbortController.abort(); } catch (_) {}
+      const posture = cerebrasPrePass.active_action
+        || fullStats?.partial_stats?.player_action_status
+        || 'Standing in the current scene';
+      const reasonClean = String(cerebrasPrePass.reason || cerebrasPrePass.reject_reason || 'Action violates Hardcore mortal realism or present-tense rules').replace(/"/g, "'");
+      const vetoMeta = {
+        verdict: '1_STAR',
+        reason: reasonClean,
+        active_action: posture,
+        bgm_hint: 'KEEP',
+        causal_outcome: cerebrasPrePass.causal_outcome || '',
+        math_deltas: { cp: 0, hp: 0, san: 0, t: 0 }
+      };
+      const vetoDialogue = '[D]: ' + JSON.stringify([[1000, `Your action does not go through. ${reasonClean} The scene stays as it was; you can try a different action.`]]);
+      res.write('data: ' + JSON.stringify({ prepass_status: 'veto', ...vetoMeta, prepass_meta: vetoMeta }) + '\n\n');
+      res.write('data: ' + JSON.stringify({ token: vetoDialogue }) + '\n\n');
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
     }
+
+    const prepassMetaPayload = {
+      verdict: cerebrasPrePass.verdict || '3_STARS',
+      reason: cerebrasPrePass.reason || 'Valid present-tense mortal action.',
+      active_action: cerebrasPrePass.active_action || '',
+      bgm_hint: cerebrasPrePass.bgm_hint || 'KEEP',
+      causal_outcome: cerebrasPrePass.causal_outcome || '',
+      math_deltas: cerebrasPrePass.math_deltas || {}
+    };
+    res.write('data: ' + JSON.stringify({
+      prepass_status: 'done',
+      ...prepassMetaPayload,
+      prepass_meta: prepassMetaPayload
+    }) + '\n\n');
+
+    const allowedSpeakerUidSet = new Set((cerebrasPrePass.speakerUids || []).map(Number).filter(Number.isInteger));
+
+    // Stage-1 pre-pass transformations: apply BEFORE NPC streaming so mid-stream TTS voice casting & Leonardo portraits already use the transformed form!
+    if (Array.isArray(cerebrasPrePass?.transformations) && cerebrasPrePass.transformations.length > 0) {
+      cerebrasPrePass.transformations.forEach(tr => {
+        if (!tr || (!tr.uid && !tr.name)) return;
+        const trUid = Number(tr.uid) || resolveEntityUid(tr.name || '', tr.role || '');
+        if (!trUid || trUid <= 1001) return;
+        const trName = trUid === 1002 ? getUid1002DisplayNameServer() : (tr.name || `Entity_${trUid}`);
+        const locked = lockCharacterCodexEntry(trName, {
+          uid: trUid,
+          species: tr.species || 'Transformed Entity',
+          role: tr.role || 'Awakened Form',
+          icon: tr.icon || '✨',
+          face_description: tr.face_description || '',
+          visual_seed: tr.face_description || undefined,
+          transformed: true,
+          force_new_image: true
+        }, currentPhaseStr);
+        if (locked) {
+          codexSnap[trName] = { ...locked };
+        }
+      });
+    }
+
+    // Fallback immediate dispatch of Beat 0 (Narrator UID 1000) if Stage-1 came back non-streaming before onEarlyBeat0 fired.
+    const immediateNarratorBeat0 = earlyBeat0DispatchedText || clampShortOpusNarrationServer(scrubUnintroducedNamesFromNarratorBeatServer(cerebrasPrePass.narrator), 16, 140);
+    if (!earlyBeat0DispatchedText && immediateNarratorBeat0) {
+      earlyBeat0DispatchedText = immediateNarratorBeat0;
+      dispatchCompletedTupleMidStream([1000, immediateNarratorBeat0]);
+    }
+
+    const openedOpus = await opusOpenPromise;
+    const upstream = openedOpus.upstream || null;
+    const asyncIterableStream = openedOpus.asyncIterableStream || null;
+    const activeVariantLabel = openedOpus.variantLabel || '';
+    const lastErrText = openedOpus.lastErrText || '';
 
     if (!upstream && !asyncIterableStream) {
       console.error(`[Pateway ${THREEROUTER_MODEL} All Keys/Variants Exhausted]: ${lastErrText}`);
