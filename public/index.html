@@ -13413,20 +13413,35 @@
         }
       }
       const upcomingText = upcoming ? String(upcoming.dialogue || upcoming.displayText || upcoming.text || '').trim() : '';
-      if (!upcoming || !upcomingText) {
-        previewEl.style.display = 'none';
-        previewEl.textContent = '';
+      if (upcoming && upcomingText) {
+        const upcomingUid = Number(upcoming.uid) || 0;
+        const rawUpcomingName = String(upcoming.name || upcoming.speaker || 'NPC').trim();
+        const isUpcomingNarrator = upcoming.type === 'narration' || upcomingUid === 1000 || /^narrator$/i.test(rawUpcomingName);
+        const upcomingName = isUpcomingNarrator ? 'Narrator' : rawUpcomingName;
+        const upcomingTheme = getCharacterColor(upcomingName, null, upcoming.roleTag || upcoming.role || '', upcomingUid);
+        previewEl.innerHTML =
+          `<div class="rpg-upcoming-label" style="color:${upcomingTheme.main};">⏭ Up next <span style="opacity:0.55;">·</span> <strong>${escapeXml(upcomingName)}</strong></div>` +
+          `<div class="rpg-upcoming-text">“${escapeXml(upcomingText)}”</div>`;
+        previewEl.style.display = 'block';
         return;
       }
-      const upcomingUid = Number(upcoming.uid) || 0;
-      const rawUpcomingName = String(upcoming.name || upcoming.speaker || 'NPC').trim();
-      const isUpcomingNarrator = upcoming.type === 'narration' || upcomingUid === 1000 || /^narrator$/i.test(rawUpcomingName);
-      const upcomingName = isUpcomingNarrator ? 'Narrator' : rawUpcomingName;
-      const upcomingTheme = getCharacterColor(upcomingName, null, upcoming.roleTag || upcoming.role || '', upcomingUid);
-      previewEl.innerHTML =
-        `<div class="rpg-upcoming-label" style="color:${upcomingTheme.main};">⏭ Up next <span style="opacity:0.55;">·</span> <strong>${escapeXml(upcomingName)}</strong></div>` +
-        `<div class="rpg-upcoming-text">“${escapeXml(upcomingText)}”</div>`;
-      previewEl.style.display = 'block';
+
+      // Live streaming preview of the next Opus beat while the current beat is still speaking!
+      const sb = hudOpen ? window._activeStreamingBeatPreview : null;
+      const curBeatIdx = Number(activeDialogueList?.[activeDialogueIndex]?.beat_index ?? activeDialogueIndex);
+      if (sb && sb.partial_text && Number(sb.beat_index) > curBeatIdx) {
+        const sbUid = Number(sb.uid) || 0;
+        const sbName = sbUid === 1000 ? 'Narrator' : String(sb.speaker || 'NPC').trim();
+        const sbTheme = getCharacterColor(sbName, null, '', sbUid);
+        previewEl.innerHTML =
+          `<div class="rpg-upcoming-label" style="color:${sbTheme.main};">⚡ Streaming next <span style="opacity:0.55;">·</span> <strong>${escapeXml(sbName)}</strong></div>` +
+          `<div class="rpg-upcoming-text">“${escapeXml(sb.partial_text)}<span style="opacity:0.55;">▌</span>”</div>`;
+        previewEl.style.display = 'block';
+        return;
+      }
+
+      previewEl.style.display = 'none';
+      previewEl.textContent = '';
     }
 
     function renderDialogueStep() {
@@ -13759,7 +13774,7 @@
         if (!beatItem) return Promise.resolve(null);
         if (beatItem.tts_audio_base64) return Promise.resolve(beatItem.tts_audio_base64);
 
-        if (beatItem._ttsPromise) {
+        if (beatItem._ttsPromise && !beatItem._ttsPromiseSettledNull) {
           if (priorityLevel === 'high' && beatItem._ttsPriority === 'background') {
             beatItem._ttsPriority = 'high';
             requestBeatTtsFromServer(beatItem, beatIdxNumber, 'high', 9500);
@@ -13767,6 +13782,7 @@
           return beatItem._ttsPromise;
         }
 
+        beatItem._ttsPromiseSettledNull = false;
         beatItem._ttsPriority = priorityLevel;
         beatItem._ttsPromise = (async () => {
           let audio = await requestBeatTtsFromServer(beatItem, beatIdxNumber, priorityLevel, 9500);
@@ -13787,7 +13803,7 @@
         const targetIdx = thisStepIndex + lookahead;
         const upcomingBeat = activeDialogueList[targetIdx];
         if (upcomingBeat && !upcomingBeat.is_silent_thought && (upcomingBeat.dialogue || upcomingBeat.text) && !upcomingBeat.tts_audio_base64 && !upcomingBeat._ttsPromise) {
-          ensureBeatAudioPromise(upcomingBeat, targetIdx, 'background');
+          ensureBeatAudioPromise(upcomingBeat, Number.isInteger(Number(upcomingBeat.beat_index)) ? Number(upcomingBeat.beat_index) : targetIdx, 'background');
         }
       }
 
@@ -13807,26 +13823,57 @@
         }
       };
 
+      const beatSlotIdx = Number.isInteger(Number(item.beat_index)) ? Number(item.beat_index) : thisStepIndex;
       const realtimeStreamSlot = typeof window._getCartesiaStreamSlot === 'function'
-        ? window._getCartesiaStreamSlot(thisStepIndex)
+        ? window._getCartesiaStreamSlot(beatSlotIdx)
         : null;
-      if ((item._ttsStreamStarted || (realtimeStreamSlot && realtimeStreamSlot.started)) && item._ttsStreamStreamed !== false) {
-        // Cartesia realtime WebSocket stream owns this beat: play Cartesia PCM only — never a foreign voice.
+      const canUseRealtimeStreamSlot = Boolean(
+        (item._ttsStreamStarted || (realtimeStreamSlot && realtimeStreamSlot.started)) &&
+        item._ttsStreamStreamed !== false &&
+        realtimeStreamSlot &&
+        (!realtimeStreamSlot.ended || realtimeStreamSlot.frames.length > 0 || realtimeStreamSlot.playing)
+      );
+
+      if (canUseRealtimeStreamSlot) {
+        // Cartesia realtime WebSocket stream owns this beat: play buffered + live PCM frames.
         item._ttsPending = false;
         const streamEndedForStep = () => {
           item._ttsPending = false;
-          if (thisStepToken === activeTtsRequestToken && activeDialogueIndex === thisStepIndex) handleTtsFinished();
+          if (thisStepToken !== activeTtsRequestToken || activeDialogueIndex !== thisStepIndex) return;
+          const slotAfter = typeof window._getCartesiaStreamSlot === 'function' ? window._getCartesiaStreamSlot(beatSlotIdx) : null;
+          if (slotAfter && slotAfter.ended && slotAfter.framesPlayed === 0) {
+            if (item.tts_audio_base64) {
+              sfx.playCartesiaTts(item.tts_audio_base64, Number(item.tts_pitch) || targetPitch, handleTtsFinished);
+              return;
+            }
+            if (!item._ttsUnavailable) {
+              item._ttsPending = true;
+              ensureBeatAudioPromise(item, beatSlotIdx, 'high')
+                .then(audioB64 => {
+                  item._ttsPending = false;
+                  if (thisStepToken !== activeTtsRequestToken || activeDialogueIndex !== thisStepIndex) return;
+                  if (audioB64) sfx.playCartesiaTts(audioB64, Number(item.tts_pitch) || targetPitch, handleTtsFinished);
+                  else playFallbackVoiceOrTimer();
+                })
+                .catch(() => {
+                  item._ttsPending = false;
+                  if (thisStepToken === activeTtsRequestToken && activeDialogueIndex === thisStepIndex) playFallbackVoiceOrTimer();
+                });
+              return;
+            }
+            playFallbackVoiceOrTimer();
+            return;
+          }
+          handleTtsFinished();
         };
         const slot = realtimeStreamSlot;
         const streamIsLive = typeof sfx._ttsStream === 'object' && sfx._ttsStream && !sfx._ttsStream.ended;
-        const alreadyPlayed = Boolean(slot && slot.framesPlayed > 0);
         if (streamIsLive && typeof sfx.attachCartesiaTtsStreamEnd === 'function') {
           item._ttsPending = true;
           sfx.attachCartesiaTtsStreamEnd(streamEndedForStep);
-        } else if (!alreadyPlayed && typeof window._requestCartesiaStreamPlayback === 'function') {
-          const streamPlaying = window._requestCartesiaStreamPlayback(thisStepIndex, streamEndedForStep);
+        } else if (typeof window._requestCartesiaStreamPlayback === 'function') {
+          const streamPlaying = window._requestCartesiaStreamPlayback(beatSlotIdx, streamEndedForStep);
           if (streamPlaying || (slot && !slot.ended)) {
-            // Playing now, or the first PCM frame is still in flight (auto-play is armed).
             item._ttsPending = true;
           } else {
             setTimeout(streamEndedForStep, 80);
@@ -16921,6 +16968,7 @@
         if (window._cartesiaRealtimeStreams && typeof window._cartesiaRealtimeStreams.clear === 'function') {
           window._cartesiaRealtimeStreams.clear();
         }
+        window._activeStreamingBeatPreview = null;
         let midStreamHudOpened = false;
         let midStreamHudLaunchInProgress = false;
         window.streamAllDistsCompleted = false;
@@ -17216,12 +17264,27 @@
               bodyPreview = formatStreamingTokenDisplay(displayStream);
             } else {
               const liveBeats = midStreamBeatsList.filter(Boolean);
-              if (liveBeats.length > 0) {
-                const beatsHtml = renderMercuryStructuredBeatsToHtml(liveBeats, null, null);
-                const tailSpinner = !window.streamAllDistsCompleted
+              const sb = window._activeStreamingBeatPreview;
+              let liveStreamingHtml = '';
+              if (sb && sb.partial_text && !midStreamBeatsList[Number(sb.beat_index)]) {
+                const sbUid = Number(sb.uid) || 0;
+                if (sbUid === 1000) {
+                  liveStreamingHtml = `<div class="scene-narration"><strong>Narrator</strong><p>${escapeXml(sb.partial_text)}<span style="opacity:0.55;">▌</span></p></div>`;
+                } else {
+                  const sbName = String(sb.speaker || 'NPC').trim();
+                  const sbCol = getCharacterColor(sbName, null, '', sbUid);
+                  const sbIcon = resolveRadarIcon(sb.icon, sbName, '', true);
+                  const sbEmoji = sb.solEmoji ? `<span style="font-size:0.82rem; opacity:0.9; color:${sbCol.main};">(${escapeXml(sb.solEmoji)})</span> ` : '';
+                  liveStreamingHtml = `<div style="margin-bottom:0.8rem; line-height:1.6;">${sbEmoji}<strong style="color:${sbCol.main}; font-family:'Cinzel',serif; font-size:0.95rem;">${escapeXml(sbIcon)} ${escapeXml(sbName)}</strong> <span style="color:#f8fafc; font-size:0.95rem;">"${escapeXml(sb.partial_text)}<span style="opacity:0.55;">▌</span>"</span></div>`;
+                }
+              }
+
+              if (liveBeats.length > 0 || liveStreamingHtml) {
+                const beatsHtml = liveBeats.length > 0 ? renderMercuryStructuredBeatsToHtml(liveBeats, null, null) : '';
+                const tailSpinner = (!window.streamAllDistsCompleted && !liveStreamingHtml)
                   ? '<div style="color:#a78bfa; font-size:0.8rem; margin-top:4px;">⚡ Streaming concurrent Opus dialogue beats...</div>'
                   : '';
-                bodyPreview = `${beatsHtml}${tailSpinner}`;
+                bodyPreview = `${beatsHtml}${liveStreamingHtml}${tailSpinner}`;
               } else {
                 bodyPreview = '<div style="color:#a78bfa; font-size:0.84rem; margin-top:4px;">⚡ Pateway Claude Opus 5.5 is writing NPC dialogue...</div>';
               }
@@ -17310,10 +17373,28 @@
                   continue;
                 }
 
+                // 0. Live Word-by-Word Partial Beat Streaming (beat_streaming) — NEVER contains inner_thought or [TURN_JSON]!
+                if (json.beat_streaming) {
+                  window._activeStreamingBeatPreview = json.beat_streaming;
+                  if (window.waitingForNextStreamedBeat && rpgStepIndicator) {
+                    const sbName = String(json.beat_streaming.speaker || 'NPC').trim();
+                    rpgStepIndicator.textContent = `Beat ${activeDialogueIndex + 1} of ${activeDialogueList.length} (⚡ Streaming ${sbName}...)`;
+                  }
+                  renderUpcomingBeatPreview();
+                  if (!streamRenderPending) {
+                    streamRenderPending = true;
+                    streamRafId = requestAnimationFrame(flushStreamUiUpdate);
+                  }
+                  continue;
+                }
+
                 // 1. Server-Driven Mid-Stream Beat Extraction (beat_extracted)
                 if (json.beat_extracted) {
                   const be = json.beat_extracted;
                   const bIdx = Number(be.beat_index);
+                  if (window._activeStreamingBeatPreview && Number(window._activeStreamingBeatPreview.beat_index) <= bIdx) {
+                    window._activeStreamingBeatPreview = null;
+                  }
                   const uid = Number(be.uid) || 1000;
                   const isNarratorTuple = uid === 1000 || be.type === 'narration';
                   const cleanSpeaker = isNarratorTuple ? 'Narrator' : (resolveCanonicalKnownNameClient(be.speaker || be.name || '') || be.speaker || `Adventurer_${uid}`);
@@ -17324,20 +17405,27 @@
                   const beatCfg = resolveCharacterTypewriterSfx(cleanSpeaker, speciesStr, null, beatEmotion, uid);
                   const beatSig = be.beat_sig || computeBeatContentSigClient(uid, be.text || be.dialogue || be.inner_thought || '');
 
+                  const preStreamSlotForBeat = typeof window._getCartesiaStreamSlot === 'function' ? window._getCartesiaStreamSlot(bIdx) : null;
+                  const prewarmedAudioForBeat = streamPrewarmedAudioByBeatIndex.get(bIdx) || streamPrewarmedAudioBySig.get(beatSig) || null;
                   let pendingResolve = null;
-                  const waitProm = new Promise(resolve => { pendingResolve = resolve; });
+                  const waitProm = prewarmedAudioForBeat?.audio_base64
+                    ? Promise.resolve(prewarmedAudioForBeat.audio_base64)
+                    : new Promise(resolve => { pendingResolve = resolve; });
                   let beatWaitTimer = null;
                   const settledResolve = (audioVal) => {
                     if (beatWaitTimer) clearTimeout(beatWaitTimer);
-                    pendingResolve(audioVal);
+                    if (pendingResolve) pendingResolve(audioVal);
                   };
-                  beatWaitTimer = setTimeout(() => {
-                    if (streamPrewarmedTtsResolversByBeatIndex.get(bIdx) === settledResolve) {
-                      streamPrewarmedTtsResolversByBeatIndex.delete(bIdx);
-                      pendingResolve(null);
-                    }
-                  }, 5500);
-                  streamPrewarmedTtsResolversByBeatIndex.set(bIdx, settledResolve);
+                  if (!prewarmedAudioForBeat?.audio_base64) {
+                    beatWaitTimer = setTimeout(() => {
+                      if (streamPrewarmedTtsResolversByBeatIndex.get(bIdx) === settledResolve) {
+                        streamPrewarmedTtsResolversByBeatIndex.delete(bIdx);
+                        if (midStreamBeatsList[bIdx]) midStreamBeatsList[bIdx]._ttsPromiseSettledNull = true;
+                        if (pendingResolve) pendingResolve(null);
+                      }
+                    }, 60000);
+                    streamPrewarmedTtsResolversByBeatIndex.set(bIdx, settledResolve);
+                  }
                   streamPrewarmedTtsPromisesByBeatIndex.set(bIdx, waitProm);
                   streamPrewarmedTtsPromisesBySig.set(beatSig, waitProm);
 
@@ -17365,7 +17453,10 @@
                     tts_voice_id: isNarratorTuple ? CLIENT_NARRATOR_EXCLUSIVE_VOICE_ID : (beatCfg.voice_id || 'voice_garrett'),
                     tts_pitch: isNarratorTuple ? 1.0 : (Number(beatCfg.pitch) || 1.0),
                     tts_input: '',
-                    tts_audio_base64: null,
+                    tts_audio_base64: prewarmedAudioForBeat?.audio_base64 || null,
+                    _ttsStreamStarted: Boolean(preStreamSlotForBeat?.started),
+                    _ttsStreamEnded: Boolean(preStreamSlotForBeat?.ended),
+                    _ttsStreamStreamed: preStreamSlotForBeat?.ended ? Boolean(preStreamSlotForBeat.streamed) : undefined,
                     _ttsUnavailable: false,
                     _ttsPromise: waitProm,
                     comic_sticker: isNarratorTuple ? null : (be.comic_sticker || getEmotionEmojiStickerClient(beatEmotion, be.solEmoji ? { emoji: be.solEmoji } : null)),
@@ -17615,7 +17706,9 @@
 
                 // 5. Opus Stream Completion Signal (opus_done)
                 if (json.opus_done) {
+                  window._activeStreamingBeatPreview = null;
                   window.streamAllDistsCompleted = true;
+                  renderUpcomingBeatPreview();
                   continue;
                 }
 
@@ -22802,6 +22895,7 @@
       window.activeEmotionSpriteMap = {};
       window._shownBottomLeftNoticeKeys = new Set();
       window._resolveLiveBeatTtsHook = null;
+      window._activeStreamingBeatPreview = null;
       rpgHudContainer?.classList.remove('active');
       document.getElementById('gameOverOverlay')?.classList.remove('active');
       document.getElementById('endingChoiceOverlay')?.classList.remove('active');
@@ -24762,8 +24856,12 @@
           target._ttsStreamEnded = true;
           target._ttsStreamStreamed = streamedFrames;
         });
-        if (slot.autoPlay && !slot.playing && slot.frames.length > 0) {
-          if (!window._playCartesiaStreamSlot(bIdx) && typeof slot.onEnded === 'function') setTimeout(slot.onEnded, 80);
+        if (slot.autoPlay && !slot.playing) {
+          if (slot.frames.length > 0) {
+            if (!window._playCartesiaStreamSlot(bIdx) && typeof slot.onEnded === 'function') setTimeout(slot.onEnded, 80);
+          } else if (typeof slot.onEnded === 'function') {
+            setTimeout(slot.onEnded, 40);
+          }
         } else if (slot.playing && typeof sfx !== 'undefined' && sfx && typeof sfx.finishCartesiaTtsStream === 'function') {
           sfx.finishCartesiaTtsStream();
         }
