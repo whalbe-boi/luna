@@ -13468,13 +13468,13 @@ function executeThreerouterHttpVariant({
   });
 }
 
-// Opus dialogue writer runs with effectively zero reasoning output: the PRIMARY attempt is the
-// prompt-cached streaming variant with thinking:{type:'adaptive'} + output_config:{effort:'none'},
-// which lets the proxy cache the long system/user prefixes while emitting no visible reasoning.
-// It carries `anthropic-beta: prompt-caching-2024-07-25` (set in executeThreerouterHttpVariant) and
-// a 30s first-byte budget so the proxy can warm up instead of timing out the turn. The field-free
-// "Stream · No Thinking Field" variant, a plain SSE retry and the non-streaming JSON call stay
-// behind it as fallbacks only.
+// Opus dialogue writer runs with ZERO reasoning: no thinking field, no thinking budget and no
+// output_config effort anywhere in the payload. The PRIMARY attempt is the prompt-cached streaming
+// variant, which lets the proxy cache the long system/user prefixes while Opus writes dialogue
+// directly. It carries `anthropic-beta: prompt-caching-2024-07-25` (set in
+// executeThreerouterHttpVariant) and a 30s first-byte budget so the proxy can warm up instead of
+// timing out the turn. The field-free "Stream · No Thinking Field" variant, a plain SSE retry and
+// the non-streaming JSON call stay behind it as fallbacks only.
 async function openThreerouterOpusNoReasoningStream({
   activeKey,
   systemPrompt = '',
@@ -13502,19 +13502,17 @@ async function openThreerouterOpusNoReasoningStream({
 
   const variants = isAnthropicEndpoint
     ? [
-        // Primary: prompt-cached stream with adaptive thinking pinned to effort 'none', so the
-        // cacheable prefixes are reused while the model emits no visible reasoning.
+        // Primary: prompt-cached field-free stream. No thinking or reasoning fields are sent, so
+        // Opus writes dialogue directly while the cacheable prefixes are still reused.
         ...(!patewayAnthropicCacheUnsupported
           ? [{
-              label: `Pateway-Anthropic-SSE-Cached (${THREEROUTER_MODEL} · Adaptive Thinking · Effort None)`,
+              label: `Pateway-Anthropic-SSE-Cached (${THREEROUTER_MODEL} · Stream · No Thinking)`,
               stream: true,
               timeoutMs: 30000,
               isCacheTier: true,
               body: {
                 model: THREEROUTER_MODEL,
                 max_tokens: 4096,
-                thinking: { type: 'adaptive' },
-                output_config: { effort: 'low' },
                 system: [{ type: 'text', text: resolvedSystem, cache_control: OPUS_CACHE_CONTROL }],
                 messages: [{ role: 'user', content: cachedUserBlocks }],
                 stream: true
