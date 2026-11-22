@@ -71,7 +71,7 @@ Copy `.env.example` to `.env` (or `.env.local`) and fill in the values. The engi
 | `HOST` | Bind host | `0.0.0.0` |
 | `PATEWAY_API_URL` / `THREEROUTER_API_URL` | Opus (Claude) endpoint | `https://api.pateway.ai/v1/messages` |
 | `PATEWAY_API_KEY` / `THREEROUTER_API_KEY` | Opus API key | built-in default |
-| `PATEWAY_MODEL` / `THREEROUTER_MODEL` | Opus model | `claude-opus-5-5` |
+| `PATEWAY_MODEL` / `THREEROUTER_MODEL` | Opus model | `claude-fable-5-2` |
 | `CEREBRAS_API_URL` | Cerebras endpoint | `https://api.cerebras.ai/v1/chat/completions` |
 | `CEREBRAS_API_KEY` | Cerebras API key | built-in default |
 | `CEREBRAS_MODEL` | Cerebras model | `gpt-oss-120b` |
