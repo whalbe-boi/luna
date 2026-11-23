@@ -39,8 +39,8 @@ test('E2E /api/chat/stream suite', async (t) => {
   process.env.CELERIS_API_URL = `${baseUrl}/celeris`;
   process.env.MERCURY_API_URL = `${baseUrl}/celeris`;
   process.env.INCEPTION_MERCURY_API_URL = `${baseUrl}/celeris`;
-  process.env.PATEWAY_API_URL = `${baseUrl}/opus`;
-  process.env.THREEROUTER_API_URL = `${baseUrl}/opus`;
+  process.env.PATEWAY_API_URL = `${baseUrl}/opus/messages`;
+  process.env.THREEROUTER_API_URL = `${baseUrl}/opus/messages`;
   process.env.CEREBRAS_API_KEY = 'test-cerebras-key';
   process.env.CELERIS_API_KEY = 'ck_test_celeris_key';
   process.env.MERCURY_API_KEY = 'ck_test_celeris_key';
@@ -154,7 +154,15 @@ test('E2E /api/chat/stream suite', async (t) => {
           return;
         }
 
-        if (req.url === '/opus') {
+        if (req.url === '/opus/messages') {
+          // Haiku dialogue contract: streamed, thinking disabled, cached system block, dialogue only.
+          assert.equal(parsedBody?.model, 'claude-haiku-5-5');
+          assert.equal(parsedBody?.stream, true);
+          assert.equal(parsedBody?.thinking?.type, 'disabled');
+          assert(Array.isArray(parsedBody?.system), 'system must be an Anthropic block array');
+          assert.equal(parsedBody?.system?.[0]?.type, 'text');
+          assert.equal(parsedBody?.system?.[0]?.cache_control?.type, 'ephemeral');
+
           res.writeHead(200, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
@@ -340,7 +348,7 @@ test('E2E /api/chat/stream suite', async (t) => {
           return;
         }
 
-        if (req.url === '/opus') {
+        if (req.url === '/opus/messages') {
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
           res.write(`data: ${JSON.stringify({
             type: 'content_block_delta',
@@ -413,7 +421,7 @@ test('E2E /api/chat/stream suite', async (t) => {
           }));
           return;
         }
-        if (req.url === '/opus') {
+        if (req.url === '/opus/messages') {
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
           res.write(`data: ${JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '[D]: [[1002, "😅", "Watch your step!"]]' } })}\n\n`);
           res.write(`data: ${JSON.stringify({ type: 'message_stop' })}\n\n`);
@@ -466,7 +474,7 @@ test('E2E /api/chat/stream suite', async (t) => {
           }));
           return;
         }
-        if (req.url === '/opus') {
+        if (req.url === '/opus/messages') {
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
           res.write(`data: ${JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '[D]: [[1002, "😱", "MY WINGS ARE GONE?!"]]' } })}\n\n`);
           res.write(`data: ${JSON.stringify({ type: 'message_stop' })}\n\n`);

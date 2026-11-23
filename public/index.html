@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Luna 3D RPG Visual Novel Studio</title>
-  <meta name="description" content="Real-time AI-directed 3D RPG Visual Novel engine with concurrent Opus beat streaming, instant Beat 0 narrator speech synthesis, Cerebras GPT-OSS micro-enrichment, and tactical radar." />
+  <meta name="description" content="Real-time AI-directed 3D RPG Visual Novel engine with concurrent Haiku beat streaming, instant Beat 0 narrator speech synthesis, Cerebras GPT-OSS micro-enrichment, and tactical radar." />
   <script src="https://cdn.jsdelivr.net/npm/marked@18.2.0/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5015,16 +5015,16 @@
 <div class="prompt-modal-backdrop" id="apiKeysModal">
   <div class="prompt-modal">
     <div class="prompt-modal-header">
-      <h3>🔑 API Configurations (Pateway Claude Opus 5.5 · Cerebras GPT-OSS-120B · Celeris-1)</h3>
+      <h3>🔑 API Configurations (EMTF Claude Haiku 5.5 · Cerebras GPT-OSS-120B [TURN_JSON] · Celeris-1)</h3>
       <button class="btn btn-sm" id="closeApiKeysBtn">✕</button>
     </div>
     <div class="prompt-modal-body">
       <div class="form-group">
-        <label class="section-title">1. Pateway API Keys — claude-opus-5-5 (NPC dialogue &amp; thoughts only · sk-ptw-...)</label>
-        <textarea id="threerouterApiKeyInput" class="input-field" rows="2" placeholder="Paste your Pateway API key (sk-ptw-...)" autocomplete="off"></textarea>
+        <label class="section-title">1. EMTF API Keys — claude-haiku-5-5 (NPC dialogue &amp; thoughts only · sk-...)</label>
+        <textarea id="threerouterApiKeyInput" class="input-field" rows="2" placeholder="Paste your EMTF API key (sk-...)" autocomplete="off"></textarea>
       </div>
       <div class="form-group">
-        <label class="section-title">2. Cerebras API Keys — gpt-oss-120b (Turn State, Beat 0 Narrator &amp; /stats · csk-...)</label>
+        <label class="section-title">2. Cerebras API Keys — gpt-oss-120b (Authoritative [TURN_JSON], Beat 0 Narrator &amp; /stats · csk-...)</label>
         <textarea id="cerebrasGptApiKeyInput" class="input-field" rows="2" placeholder="Paste your Cerebras API key (csk-...)" autocomplete="off"></textarea>
       </div>
       <div class="form-group">
@@ -5331,7 +5331,7 @@
   </div>
   <div class="pipeline-step-card" id="stepCardDirector">
     <span class="pipeline-step-icon">⚡</span>
-    <span class="pipeline-step-label">Claude Opus 5.5: NPC Dialogue</span>
+    <span class="pipeline-step-label">Claude Haiku 5.5: NPC Dialogue</span>
     <span class="pipeline-step-status" id="stepStatusDirector">Standby</span>
   </div>
   <div class="pipeline-step-card" id="stepCardLedger">
@@ -11749,11 +11749,11 @@
     }
 
     // Decoupled browser credential slots:
-    // - threerouterApiKey: Pateway key (sk-ptw-...) for claude-opus-5-5 dialogue
+    // - threerouterApiKey: EMTF key (sk-...) for claude-haiku-5-5 dialogue (dialogue only — Cerebras owns [TURN_JSON])
     // - cerebrasApiKey: Cerebras key (csk-...) for gpt-oss-120b high-reasoning pre-pass, Beat 0 narrator, /stats & /summarize
     // - mercuryApiKey: Celeris key (ck_...) for celeris-1 fast HUD analyze, beat micro-enricher, active-action & BGM MCP
     localStorage.removeItem('puter_api_key');
-    const DEFAULT_CLIENT_PATEWAY_KEY = 'sk-ptw-132WnNu0lnw83cV90RuQDBTRnh0MQQAxdNqS0';
+    const DEFAULT_CLIENT_PATEWAY_KEY = 'sk-8K7QgcLzAA5cZWAIjWVyR0bl7DbXGvgX8nd7vv8JJOyVnl8e';
     let threerouterApiKey = localStorage.getItem('pateway_api_key') || localStorage.getItem('threerouter_api_key') || DEFAULT_CLIENT_PATEWAY_KEY;
     let sonnetApiKey = threerouterApiKey;
 
@@ -16618,7 +16618,7 @@
       const aiMsg = {
       id: aiMsgId,
       role: 'assistant',
-      content: 'GPT-OSS is resolving the turn (' + currentEffort + '). Claude Opus 5.5 will write the NPC dialogue.'
+      content: 'GPT-OSS is resolving the turn (' + currentEffort + '). Claude Haiku 5.5 will write the NPC dialogue.'
       };
       const aiRow = createMessageElement(aiMsg);
       messagesView.appendChild(aiRow);
@@ -16722,7 +16722,7 @@
         });
 
         if (!solRes.ok) {
-          let errorMsg = 'Pateway claude-opus-5-5 API Error [' + solRes.status + ']';
+          let errorMsg = 'EMTF claude-haiku-5-5 API Error [' + solRes.status + ']';
           try {
           const errData = await solRes.json();
           if (errData && errData.error) errorMsg = errData.error;
@@ -17286,7 +17286,7 @@
                   : '';
                 bodyPreview = `${beatsHtml}${liveStreamingHtml}${tailSpinner}`;
               } else {
-                bodyPreview = '<div style="color:#a78bfa; font-size:0.84rem; margin-top:4px;">⚡ Pateway Claude Opus 5.5 is writing NPC dialogue...</div>';
+                bodyPreview = '<div style="color:#a78bfa; font-size:0.84rem; margin-top:4px;">⚡ EMTF Claude Haiku 5.5 is writing NPC dialogue...</div>';
               }
             }
             liveBubble.innerHTML = `${earlyHeaderCard}${bodyPreview}`;
@@ -17364,7 +17364,7 @@
                     setPipelineStep('Arbiter', 'done', '⛔ 1_STAR Veto');
                   } else {
                     setPipelineStep('Arbiter', 'done', prepassMetaReceived.verdict + ' · Pre-Pass Verified');
-                    setPipelineStep('Director', 'active', 'Pateway Claude Opus 5.5 + 0ms Cartesia TTS...');
+                    setPipelineStep('Director', 'active', 'EMTF Claude Haiku 5.5 + 0ms Cartesia TTS...');
                     if (prepassMetaReceived.active_action) {
                       updateMercuryActionHeader('resolved', prepassMetaReceived.active_action, '');
                     }
@@ -17765,7 +17765,7 @@
         streamRenderPending = false;
 
         if (!fullStory || !fullStory.trim()) {
-          throw new Error('Pateway claude-opus-5-5 returned an empty response. Verify your Pateway key (sk-ptw-...) in 🔑 API Keys.');
+          throw new Error('EMTF claude-haiku-5-5 returned an empty response. Verify your EMTF key (sk-...) in 🔑 API Keys.');
         }
         if (!shouldAcceptAsyncTurnEffect(turnGenIdAtSend, turnEpochAtSend)) {
           console.warn('[Turn] Discarding a stale streamed turn after a campaign generation/epoch change.');
@@ -21403,7 +21403,7 @@
 
           return stack(
             grid(
-              meter('🧠 Pateway Claude Opus 5.5 Director', 'Online', 100, '#c084fc'),
+              meter('🧠 EMTF Claude Haiku 5.5 Director', 'Online', 100, '#c084fc'),
               meter('🧭 GPT-OSS-120B State Arbiter', 'Synced', 100, '#38bdf8'),
               meter('🎨 Leonardo LCM Image Engine', 'Cached', 95, '#34d399'),
               meter('🔊 Cartesia Sonic-3.6 TTS', 'Ready', 100, '#fbbf24')
@@ -23244,7 +23244,7 @@
       syncCredentialsToServer(true);
 
       apiKeysModal.classList.remove('open');
-      toast('💾 Pateway Claude Opus 5.5, Cerebras GPT-OSS, Celeris-1, Cartesia & Leonardo LCM configurations saved!');
+      toast('💾 EMTF Claude Haiku 5.5, Cerebras GPT-OSS, Celeris-1, Cartesia & Leonardo LCM configurations saved!');
     };
     document.getElementById('newChatBtn').onclick = async () => {
       sfx.play('click');
@@ -25174,7 +25174,7 @@
               <strong style="color:#6ee7b7; font-size:0.88rem;">📦 Room Floor &amp; Overflow Loot — ${escapeXml(loc)}</strong>
               <button type="button" class="btn btn-sm" onclick="document.getElementById('worldHubModal').classList.remove('open'); window.openInventoryLoadoutModal();">🎒 Open Pouch to Drop Items</button>
             </div>
-            <div style="font-size:0.72rem; color:#94a3b8;">Synced 100% with Pateway claude-opus-5-5 &amp; GPT-OSS (<code>Floor:[...]</code> &amp; <code>[TURN_JSON].d.fl</code>) — anything dropped or picked up here is physically visible in the scene.</div>
+            <div style="font-size:0.72rem; color:#94a3b8;">Synced 100% with EMTF claude-haiku-5-5 &amp; GPT-OSS (<code>Floor:[...]</code> &amp; <code>[TURN_JSON].d.fl</code>) — anything dropped or picked up here is physically visible in the scene.</div>
             <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">${groundHtml}</div>
           </div>
 
