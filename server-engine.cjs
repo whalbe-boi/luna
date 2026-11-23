@@ -6276,28 +6276,153 @@ LAWS YOU MUST ENFORCE:
   • 1 GP = 10 SP = 100 CP. Record exact coin/item transfers in "d" and "math_deltas".
   • Prayers or begging the empty sky do not summon cosmic miracles; survival and victory are earned through smarts, preparation, and comedic resourcefulness.
 
-Respond STRICTLY with ONE compact JSON object in content with fields in this EXACT key order (no markdown prose) so Beat 0 narrator streams first:
+Output STRICTLY valid JSON (no markdown fences) with keys in THIS EXACT ORDER so the server can stream Beat 0 TTS and launch Claude Haiku 5.5 on the first keys while you finish the tail:
 {
   "verdict": "3_STARS",
+  "speaker_uids": [1002],
+  "narrator": "ULTRA-SHORT Beat 0 camera narration: exactly ONE crisp sentence, 8-16 words (HARD MAX 16 words / 140 characters), one 5-senses camera shot of the single strongest observable motion, sound or physical change THIS turn — no backstory, no room tour, no second sentence, no 'room remains unchanged' filler.",
   "reason": "1 concise sentence explaining why this turn is 1_STAR, 2_STARS, or 3_STARS",
   "active_action": "3-8 word present-continuous posture & tone Protagonist holds at end of turn",
   "bgm_hint": "KEEP",
   "causal_outcome": "1-2 dense sentences stating exact physical/social/trade outcome, comedic fallout, new openings, and room motion",
-  "speaker_uids": [1002],
-  "narrator": "ULTRA-SHORT Beat 0 camera narration: exactly ONE crisp sentence, 8-16 words (HARD MAX 16 words / 140 characters), one 5-senses camera shot of the single strongest observable motion, sound or physical change THIS turn — no backstory, no room tour, no second sentence, no 'room remains unchanged' filler.",
   "npc_directives": ["UID: expressive free-will reaction, comedic slip/counter-move, or psychological shift grounded in sightlines/earshot/IQ/Trust/Desire"],
-  "npc_reactions": [
-    { "uid": 1002, "internal_thought": "What this NPC genuinely thinks based on personality and self-interest", "emotional_shift": { "trust": -5, "respect": -10, "fear": 5, "annoyance": 15 }, "autonomous_decision": "Concrete lively action this NPC takes right now" }
-  ],
   "inner_thought_targets": ["UID: funny or scheming private English thought strictly reacting to what just happened aloud/visibly"],
   "transformations": [],
   "math_deltas": { "cp": 0, "hp": 0, "mp": 0, "san": 0, "fat": 0, "hng": 0, "t": 1 },
   "weather": "",
   "scars_added": [],
-  "turn_json": {"s":{...},"d":{...}}
+  "turn_json": {"s":{...},"d":{...}},
+  "npc_reactions": {
+    "1002": {
+      "internal_thought": "What this NPC genuinely thinks based on personality and self-interest",
+      "emotional_shift": { "trust": -5, "respect": -10, "fear": 5, "annoyance": 15 },
+      "autonomous_decision": "Concrete lively action this NPC takes right now",
+      "qualifiers": "6-14 word participial -ing physical action during this turn",
+      "visual_impact": "sparkle_eyes|vein_pop|sweat_drop|gloom_lines|blush_glow|shock_bolt|heart_pulse|none",
+      "is_moving": false,
+      "sticker_anim": "pop|bounce|shake|sparkle|menace|spin|heartbeat|float|glitch"
+    }
+  },
+  "emergent_npcs": {
+    "1003": {
+      "name": "Grounded descriptive title (never invent an unintroduced personal name unless spoken in quotes!)",
+      "gender": "female|male",
+      "species": "Human",
+      "role": "Role in scene",
+      "icon": "👤",
+      "face_description": "1girl/1boy, solo, ... neck up only, strictly head and face only",
+      "tts_voice_id": "voice_...",
+      "tts_pitch": 1.0
+    }
+  },
+  "room_changed_this_turn": false,
+  "player_action_status": "Concise current player stance/action",
+  "present_character_uids_in_room": [1001, 1002],
+  "terminal_room_landmarks": [],
+  "moving_character_uids": [],
+  "important_landmarks": [],
+  "secrets_resolved": [],
+  "identity_reveals": {},
+  "scene_ambient": {
+    "setting": "Current Zone",
+    "mood": "comedic dark-fantasy",
+    "time_of_day": "daylight",
+    "lighting": "ambient lighting description",
+    "clock_time": "12:00 AM"
+  },
+  "mercury_widget": {
+    "type": "quest_update",
+    "title": "🧭 Current Scene — Tactical Options",
+    "subtitle": "Active Zone",
+    "badge": "HARDCORE MODE",
+    "theme": "cyan",
+    "summary": "Concise 1-sentence spoiler-free summary of the situation at the end of this turn.",
+    "items": [
+      {
+        "icon": "🧭",
+        "name": "Fresh Situational Option",
+        "detail": "Specific forward-looking detail grounded in the newest twist of this scene.",
+        "tag": "NEXT MOVE",
+        "action_prompt": "I take a distinct present-tense action suited to this exact moment."
+      }
+    ]
+  },
+  "pov_prompt": ""
 }
 
+Rules:
+- Put verdict, speaker_uids, and narrator FIRST so Haiku starts immediately.
+- turn_json is the final authoritative end state; Haiku never writes [TURN_JSON].
+- Only include emergent_npcs for brand-new UIDs (1003-1999) not already in the codex. Never assign Heitor's narrator voice to an NPC.
+- mercury_widget must be strictly spoiler-free (never leak private thoughts or hidden secrets).
+
 ${getTurnJsonContractServer()}`;
+
+function hydrateTurnMetaFromCerebrasPlanServer(cerebrasPlan = {}, codexVault = GLOBAL_CHARACTER_CODEX_VAULT) {
+  const npcReactions = (cerebrasPlan?.npc_reactions && typeof cerebrasPlan.npc_reactions === 'object')
+    ? cerebrasPlan.npc_reactions
+    : {};
+  const emergentNpcs = (cerebrasPlan?.emergent_npcs && typeof cerebrasPlan.emergent_npcs === 'object')
+    ? cerebrasPlan.emergent_npcs
+    : {};
+
+  // Persist any brand-new emergent NPC (1003-1999) straight into the in-memory codex
+  let codexDirty = false;
+  for (const [rawUid, profile] of Object.entries(emergentNpcs)) {
+    const uidNum = Number(rawUid);
+    if (!Number.isInteger(uidNum) || uidNum < 1003 || uidNum > 1999) continue;
+    if (!codexVault[uidNum] && profile && typeof profile === 'object') {
+      const safeVoice = profile.tts_voice_id && profile.tts_voice_id !== NARRATOR_EXCLUSIVE_CARTESIA_ID
+        ? String(profile.tts_voice_id).trim()
+        : '';
+      const rawPitch = Number(profile.tts_pitch);
+      codexVault[uidNum] = {
+        uid: uidNum,
+        name: String(profile.name || 'Stranger').trim(),
+        gender: profile.gender === 'male' ? 'male' : 'female',
+        species: String(profile.species || 'Human').trim(),
+        role: String(profile.role || 'Bystander').trim(),
+        icon: String(profile.icon || '👤').trim(),
+        face_description: String(profile.face_description || '').trim(),
+        tts_voice_id: safeVoice,
+        tts_pitch: Number.isFinite(rawPitch) ? Math.max(0.76, Math.min(1.26, rawPitch)) : 1.0
+      };
+      codexDirty = true;
+    }
+  }
+  if (codexDirty) {
+    try { saveCharacterCodexDiskVault(codexVault); } catch (_) {}
+  }
+
+  return {
+    npcReactions,
+    finalizerPayload: {
+      room_changed_this_turn: Boolean(cerebrasPlan?.room_changed_this_turn),
+      player_action_status: String(cerebrasPlan?.player_action_status || '').trim(),
+      present_character_uids_in_room: Array.isArray(cerebrasPlan?.present_character_uids_in_room)
+        ? cerebrasPlan.present_character_uids_in_room
+        : [],
+      terminal_room_landmarks: Array.isArray(cerebrasPlan?.terminal_room_landmarks)
+        ? cerebrasPlan.terminal_room_landmarks
+        : [],
+      moving_character_uids: Array.isArray(cerebrasPlan?.moving_character_uids)
+        ? cerebrasPlan.moving_character_uids
+        : [],
+      important_landmarks: Array.isArray(cerebrasPlan?.important_landmarks)
+        ? cerebrasPlan.important_landmarks
+        : [],
+      secrets_resolved: Array.isArray(cerebrasPlan?.secrets_resolved)
+        ? cerebrasPlan.secrets_resolved
+        : [],
+      identity_reveals: (cerebrasPlan?.identity_reveals && typeof cerebrasPlan.identity_reveals === 'object')
+        ? cerebrasPlan.identity_reveals
+        : {},
+      mercury_widget: cerebrasPlan?.mercury_widget || null,
+      scene_ambient: cerebrasPlan?.scene_ambient || null,
+      pov_prompt: String(cerebrasPlan?.pov_prompt || '').trim()
+    }
+  };
+}
 
 function extractJsonStringFieldFallbackServer(rawPartial = '', fieldName = '') {
   if (opusBeatStreamModule?.extractCompleteJsonStringField) {
@@ -6507,25 +6632,45 @@ Audit this turn with high reasoning and return the tactical referee & comedy liv
           ? 'Valid mortal attempt adapted under SSS physics and NPC reaction speed.'
           : 'Valid present-tense mortal action within physical reach and earshot.'));
 
-    const cleanNpcReactions = Array.isArray(parsed.npc_reactions)
-      ? parsed.npc_reactions
-        .filter(r => r && Number(r.uid))
-        .slice(0, 8)
-        .map(r => {
-          const es = (r.emotional_shift && typeof r.emotional_shift === 'object') ? r.emotional_shift : {};
-          return {
-            uid: Number(r.uid),
-            internal_thought: String(r.internal_thought || '').slice(0, 300),
-            emotional_shift: {
-              trust: Number(es.trust) || 0,
-              respect: Number(es.respect) || 0,
-              fear: Number(es.fear) || 0,
-              annoyance: Number(es.annoyance) || 0
-            },
-            autonomous_decision: String(r.autonomous_decision || '').slice(0, 300)
-          };
-        })
-      : [];
+    // The unified single-pass schema returns npc_reactions as a UID-keyed object (with the visual
+    // qualifiers that used to need a celeris-1 round-trip). Legacy array responses are normalized
+    // into the same two shapes so directives/dossiers and the zero-LLM beat resolver both work.
+    const rawReactionEntries = Array.isArray(parsed.npc_reactions)
+      ? parsed.npc_reactions.filter(r => r && Number(r.uid)).map(r => [Number(r.uid), r])
+      : (parsed.npc_reactions && typeof parsed.npc_reactions === 'object'
+        ? Object.entries(parsed.npc_reactions)
+          .filter(([k, r]) => r && typeof r === 'object' && Number.isInteger(Number(k)))
+          .map(([k, r]) => [Number(k), r])
+        : []);
+    const npcReactionsByUid = {};
+    const cleanNpcReactions = rawReactionEntries
+      .slice(0, 8)
+      .map(([uidNum, r]) => {
+        const es = (r.emotional_shift && typeof r.emotional_shift === 'object') ? r.emotional_shift : {};
+        const visual = {
+          qualifiers: String(r.qualifiers || '').slice(0, 200),
+          visual_impact: String(r.visual_impact || 'none').trim() || 'none',
+          is_moving: Boolean(r.is_moving),
+          sticker_anim: String(r.sticker_anim || 'pop').trim() || 'pop'
+        };
+        npcReactionsByUid[String(uidNum)] = visual;
+        return {
+          uid: uidNum,
+          internal_thought: String(r.internal_thought || '').slice(0, 300),
+          emotional_shift: {
+            trust: Number(es.trust) || 0,
+            respect: Number(es.respect) || 0,
+            fear: Number(es.fear) || 0,
+            annoyance: Number(es.annoyance) || 0
+          },
+          autonomous_decision: String(r.autonomous_decision || '').slice(0, 300),
+          ...visual
+        };
+      });
+
+    // Persist brand-new emergent NPC profiles into the in-memory codex (no micro-enricher needed)
+    // and keep the turn-level tail (widget, room state, ambient) for the single turn_state emit.
+    const hydratedMeta = hydrateTurnMetaFromCerebrasPlanServer(parsed, GLOBAL_CHARACTER_CODEX_VAULT);
 
     return {
       verdict,
@@ -6542,6 +6687,9 @@ Audit this turn with high reasoning and return the tactical referee & comedy liv
       math_deltas: Object.fromEntries(['cp', 'hp', 'mp', 'san', 'fat', 'hng', 't'].map(key => [key, turnJson?.d[key] ?? 0])),
       npc_directives: !isStartCommand && Array.isArray(parsed.npc_directives) ? parsed.npc_directives.slice(0, 6).map(String) : [],
       npc_reactions: isStartCommand ? [] : cleanNpcReactions,
+      npc_reactions_by_uid: npcReactionsByUid,
+      emergent_npcs: (parsed.emergent_npcs && typeof parsed.emergent_npcs === 'object') ? parsed.emergent_npcs : {},
+      finalizer_payload: hydratedMeta.finalizerPayload,
       inner_thought_targets: !isStartCommand && Array.isArray(parsed.inner_thought_targets) ? parsed.inner_thought_targets.slice(0, 4).map(String) : [],
       transformations: turnJson?.d.tr || []
     };
@@ -6550,6 +6698,143 @@ Audit this turn with high reasoning and return the tactical referee & comedy liv
     throw new Error(`GPT-OSS returned an invalid turn (${issue}). Please retry. No story action was applied.`);
   }
 }
+// ==================== 4. UNIFIED 1-CEREBRAS + 1-HAIKU TURN ORCHESTRATOR ====================
+async function executeOneCerebrasOneHaikuTurnServer({
+  isStartCommand = false,
+  priorStage = {},
+  cerebrasOptions = null,
+  prePassPlan = null,
+  haikuSystemPrompt = '',
+  haikuUserPrompt = '',
+  cerebrasKey = null,
+  anthropicKey = null,
+  customCartesiaKeys = null,
+  fallbackNpcVoiceId = '',
+  abortSignal,
+  emitSseEvent,
+  onBeatResolved = null,
+  skipDirectTts = false
+}) {
+  const npcReactionsRef = { current: {} };
+  let haikuLaunched = false;
+  let haikuPipelinePromise = null;
+  let beat0TtsPromise = null;
+
+  const launchBeat0AndHaikuConcurrently = ({ beat0NarratorText, resolvedSceneSummary }) => {
+    if (haikuLaunched) return;
+    haikuLaunched = true;
+
+    const cleanBeat0 = String(beat0NarratorText || '').trim();
+    if (cleanBeat0) {
+      emitSseEvent('beat', {
+        beat_index: 0,
+        uid: 1000,
+        isNarrator: true,
+        spokenDialogue: cleanBeat0,
+        qualifiers: '',
+        visual_impact: 'none',
+        is_moving: false,
+        sticker_anim: 'pop'
+      });
+
+      // Beat 0 Narrator starts streaming Cartesia audio immediately
+      if (!skipDirectTts) {
+        beat0TtsPromise = synthesizeCartesiaSpeechServer({
+          ttsInput: cleanBeat0,
+          voiceId: NARRATOR_EXCLUSIVE_CARTESIA_ID,
+          emotionBucket: 'neutral',
+          isNarrator: true,
+          customCartesiaKeys,
+          priority: 'high',
+          beatIndex: 0,
+          onStreamChunk: (pcmChunkBase64) => {
+            emitSseEvent('tts_chunk', { beat_index: 0, uid: 1000, chunk: pcmChunkBase64 });
+          }
+        }).then((wavBase64) => {
+          if (wavBase64) {
+            emitSseEvent('tts_done', { beat_index: 0, uid: 1000, wav_base64: wavBase64 });
+          }
+        });
+      }
+    }
+
+    // Haiku opens at the exact same millisecond as Beat 0 TTS (warm or cold cache starts immediately)
+    haikuPipelinePromise = (async () => {
+      const { asyncIterableStream } = await openEmtfHaikuDialogueStream({
+        activeKey: anthropicKey,
+        systemPrompt: haikuSystemPrompt || getStaticAstraSystemPrompt(),
+        flatUserPromptString: haikuUserPrompt,
+        signal: abortSignal
+      });
+
+      if (!asyncIterableStream) return '';
+
+      return streamHaikuBeatsDirectlyToCartesiaServer({
+        haikuStreamIterable: asyncIterableStream,
+        npcReactionsRef,
+        codexVault: GLOBAL_CHARACTER_CODEX_VAULT,
+        customCartesiaKeys,
+        fallbackNpcVoiceId,
+        emitSseEvent,
+        onBeatResolved,
+        skipDirectTts
+      });
+    })();
+  };
+
+  let cerebrasFullPlan = prePassPlan;
+  if (!cerebrasFullPlan) {
+    cerebrasFullPlan = await runCerebrasSequentialPrePass({
+      ...(cerebrasOptions || {}),
+      isStartCommand,
+      cerebrasKey,
+      onEarlyBeat0: (earlyInfo) => {
+        launchBeat0AndHaikuConcurrently({
+          beat0NarratorText: earlyInfo?.narrator || '',
+          resolvedSceneSummary: earlyInfo?.causal_outcome || ''
+        });
+      },
+      onEarlyPlan: ({ narrator, causal_outcome }) => {
+        launchBeat0AndHaikuConcurrently({
+          beat0NarratorText: narrator,
+          resolvedSceneSummary: causal_outcome || ''
+        });
+      }
+    });
+  }
+
+  // Backfill npc_reactions as soon as Cerebras completes its tail JSON
+  const { npcReactions, finalizerPayload } = hydrateTurnMetaFromCerebrasPlanServer(
+    cerebrasFullPlan,
+    GLOBAL_CHARACTER_CODEX_VAULT
+  );
+  npcReactionsRef.current = npcReactions;
+
+  // Fallback guard in case Cerebras completed without firing onEarlyPlan
+  launchBeat0AndHaikuConcurrently({
+    beat0NarratorText: cerebrasFullPlan?.narrator || '',
+    resolvedSceneSummary: cerebrasFullPlan?.turnJson?.s?.z || cerebrasFullPlan?.turn_json?.s?.z || ''
+  });
+
+  const { turnJson, source } = resolveCerebrasAuthoredTurnJsonServer({
+    plannedTurnJson: cerebrasFullPlan?.turnJson || cerebrasFullPlan?.turn_json,
+    priorStage,
+    opening: isStartCommand
+  });
+
+  const [, fullHaikuRawText] = await Promise.allSettled([beat0TtsPromise, haikuPipelinePromise])
+    .then(results => [results[0], results[1]?.status === 'fulfilled' ? results[1].value : '']);
+
+  // Emit authoritative turn_json + widget straight from that single Cerebras pass (no /api/rpg/analyze)
+  emitSseEvent('turn_state', {
+    turn_json: turnJson,
+    source,
+    ...finalizerPayload
+  });
+
+  return { turnJson, source, finalizerPayload, npcReactions, fullHaikuRawText };
+}
+
 function formatCerebrasPrePassForOpus(prePass = null) {
   if (!prePass || typeof prePass !== 'object') return '';
   const lines = [
@@ -13627,56 +13912,255 @@ function computeBeatContentSigServer(uidVal, textVal) {
   return `${Number(uidVal) || 1000}__${normWords}`;
 }
 
-const SINGLE_BEAT_MICRO_ENRICHER_SYSTEM_PROMPT = `You are celeris-1: Real-Time Visual Novel Micro-Enricher.
-Given a single newly streamed dialogue beat (plus Beat 0 camera context), return ONLY compact JSON.
-• If "mode": "known": return {"qualifiers":"<6-14 word participial -ing physical action>", "visual_impact":"sparkle_eyes|vein_pop|sweat_drop|gloom_lines|blush_glow|shock_bolt|heart_pulse|none", "is_moving":boolean, "sticker_anim":"pop|bounce|shake|sparkle|menace|spin|heartbeat|float|glitch"}.
-• If "mode": "emergent": also infer the new emergent character's grounded descriptive title (never invent an unintroduced personal name unless spoken in quotes in the beat!), gender ("female"|"male"), species, role, single emoji icon, 1-sentence anime headshot face_description ("1girl/1boy, solo, ... neck up only, strictly head and face only"), tts_voice_id (from Cartesia voice_id list, NEVER Heitor), and tts_pitch (0.76-1.26):
-{"name":"...", "gender":"female|male", "species":"...", "role":"...", "icon":"👤", "face_description":"...", "qualifiers":"<participial -ing action>", "visual_impact":"none", "is_moving":false, "sticker_anim":"pop", "tts_voice_id":"voice_...", "tts_pitch":1.0}`;
+// ==================== 2. IN-MEMORY BEAT VISUAL & VOICE RESOLVER (ZERO LLM CALLS) ====================
+const EMOJI_TO_VISUAL_FALLBACK = {
+  '💢': { visual_impact: 'vein_pop', sticker_anim: 'shake', bucket: 'anger' },
+  '😡': { visual_impact: 'vein_pop', sticker_anim: 'menace', bucket: 'anger' },
+  '💦': { visual_impact: 'sweat_drop', sticker_anim: 'shake', bucket: 'nervous' },
+  '😰': { visual_impact: 'sweat_drop', sticker_anim: 'shake', bucket: 'nervous' },
+  '😳': { visual_impact: 'blush_glow', sticker_anim: 'bounce', bucket: 'flustered' },
+  '✨': { visual_impact: 'sparkle_eyes', sticker_anim: 'sparkle', bucket: 'excited' },
+  '😼': { visual_impact: 'sparkle_eyes', sticker_anim: 'pop', bucket: 'smug' },
+  '😱': { visual_impact: 'shock_bolt', sticker_anim: 'shake', bucket: 'shock' },
+  '💀': { visual_impact: 'gloom_lines', sticker_anim: 'glitch', bucket: 'dread' },
+  '❤️': { visual_impact: 'heart_pulse', sticker_anim: 'heartbeat', bucket: 'affection' }
+};
 
-async function runSingleBeatCelerisEnricher({
-  mode = 'known',
-  beatIndex = 1,
-  uid = 1002,
-  speaker = 'NPC',
-  emoji = '🙂',
-  text = '',
-  beat0Text = '',
-  priorBeatText = '',
-  activeCelerisKey = null,
-  activeCerebrasKey = null,
-  promptCacheKey = ''
+function resolveBeatVisualAndVoiceDirectServer({
+  uid,
+  emoji = '',
+  spokenDialogue = '',
+  privateThought = '',
+  npcReactions = {},
+  codexVault = GLOBAL_CHARACTER_CODEX_VAULT,
+  fallbackNpcVoiceId = ''
 }) {
-  if (uid === 1000) return null;
-  const hasCeleris = resolveProviderKeyPool('celeris', activeCelerisKey).filter(k => !k.startsWith('csk-')).length > 0;
-  const hasCerebras = resolveCerebrasKeyPool(activeCerebrasKey).length > 0;
-  if (!hasCeleris && !hasCerebras) return null;
+  const numericUid = Number(uid) || 1000;
+  const cleanSpoken = String(spokenDialogue || '').trim();
 
-  const userPrompt = JSON.stringify({
-    mode,
-    beat_index: beatIndex,
-    uid,
-    speaker,
-    emoji,
-    text,
-    beat0_camera: beat0Text,
-    prior_beat: priorBeatText
-  });
-  try {
-    const raw = await callCelerisFirstWithCerebrasFallback({
-      systemPrompt: SINGLE_BEAT_MICRO_ENRICHER_SYSTEM_PROMPT,
-      userPrompt,
-      celerisKey: activeCelerisKey,
-      cerebrasKey: activeCerebrasKey,
-      maxCompletionTokens: 1024,
-      timeoutMs: 4500,
-      jsonObject: true,
-      promptCacheKey
-    });
-    const parsed = extractValidJson(raw);
-    return (parsed && typeof parsed === 'object') ? parsed : null;
-  } catch (_) {
-    return null;
+  // Narrator micro-beats (UID 1000) always use Heitor's exclusive narrator fast-path
+  if (numericUid === 1000) {
+    return {
+      uid: 1000,
+      isNarrator: true,
+      emotion: 'neutral',
+      emotionBucket: 'neutral',
+      spokenDialogue: cleanSpoken,
+      privateThought: '',
+      ttsInput: cleanSpoken,
+      voiceId: NARRATOR_EXCLUSIVE_CARTESIA_ID,
+      prosody: null,
+      qualifiers: '',
+      visual_impact: 'none',
+      is_moving: false,
+      sticker_anim: 'pop'
+    };
   }
+
+  const codexEntry = codexVault[numericUid] || {};
+  const reactionMeta = npcReactions[String(numericUid)] || npcReactions[numericUid] || {};
+  const emojiFallback = EMOJI_TO_VISUAL_FALLBACK[String(emoji || '').trim()] || {
+    visual_impact: 'none',
+    sticker_anim: 'pop',
+    bucket: 'neutral'
+  };
+
+  // Never allow an NPC to inherit the narrator's exclusive voice ID
+  const resolvedVoiceId = (codexEntry.tts_voice_id && codexEntry.tts_voice_id !== NARRATOR_EXCLUSIVE_CARTESIA_ID)
+    ? codexEntry.tts_voice_id
+    : fallbackNpcVoiceId;
+
+  const pitchVal = Number(codexEntry.tts_pitch);
+  const prosody = Number.isFinite(pitchVal) && pitchVal !== 1.0 ? { pitch: pitchVal } : null;
+
+  return {
+    uid: numericUid,
+    isNarrator: false,
+    emotion: String(emoji || 'neutral').trim() || 'neutral',
+    emotionBucket: emojiFallback.bucket,
+    spokenDialogue: cleanSpoken,
+    privateThought: String(privateThought || '').trim(),
+    // Only spoken dialogue goes to Cartesia; privateThought stays silent in the UI bubble
+    ttsInput: cleanSpoken,
+    voiceId: resolvedVoiceId,
+    prosody,
+    qualifiers: String(reactionMeta.qualifiers || '').trim(),
+    visual_impact: String(reactionMeta.visual_impact || emojiFallback.visual_impact),
+    is_moving: Boolean(reactionMeta.is_moving),
+    sticker_anim: String(reactionMeta.sticker_anim || emojiFallback.sticker_anim)
+  };
+}
+
+// ==================== 3. INCREMENTAL HAIKU TUPLE STREAMER -> DIRECT CARTESIA TTS ====================
+function createIncrementalHaikuTupleParser(onTupleReady) {
+  let buffer = '';
+  let scanIdx = 0;
+  let foundOuterArray = false;
+  let tupleStartIdx = -1;
+  let bracketDepth = 0;
+  let inString = false;
+  let escaped = false;
+
+  return {
+    push(chunkText) {
+      if (!chunkText) return;
+      buffer += String(chunkText);
+
+      while (scanIdx < buffer.length) {
+        const ch = buffer[scanIdx];
+
+        if (inString) {
+          if (escaped) {
+            escaped = false;
+          } else if (ch === '\\') {
+            escaped = true;
+          } else if (ch === '"') {
+            inString = false;
+          }
+          scanIdx++;
+          continue;
+        }
+
+        if (ch === '"') {
+          inString = true;
+          scanIdx++;
+          continue;
+        }
+
+        if (!foundOuterArray) {
+          // Wait until we enter the outer array of `[D]: [ ... ]`
+          if (ch === '[') {
+            const prefix = buffer.slice(0, scanIdx);
+            if (/\[D\]\s*:\s*$/i.test(prefix) || prefix.trim() === '') {
+              foundOuterArray = true;
+              bracketDepth = 1;
+            }
+          }
+          scanIdx++;
+          continue;
+        }
+
+        if (ch === '[') {
+          if (bracketDepth === 1) {
+            tupleStartIdx = scanIdx;
+          }
+          bracketDepth++;
+        } else if (ch === ']') {
+          bracketDepth--;
+          if (bracketDepth === 1 && tupleStartIdx !== -1) {
+            const rawTuple = buffer.slice(tupleStartIdx, scanIdx + 1);
+            tupleStartIdx = -1;
+            try {
+              const parsed = JSON.parse(rawTuple);
+              if (Array.isArray(parsed) && parsed.length >= 2) {
+                onTupleReady(parsed);
+              }
+            } catch (_) {
+              // Skip malformed tuple fragment without stalling the stream
+            }
+          } else if (bracketDepth <= 0) {
+            // Reached closing bracket of `[D]: [...]`
+            foundOuterArray = false;
+          }
+        }
+        scanIdx++;
+      }
+    }
+  };
+}
+
+async function streamHaikuBeatsDirectlyToCartesiaServer({
+  haikuStreamIterable,
+  npcReactionsRef,
+  codexVault = GLOBAL_CHARACTER_CODEX_VAULT,
+  customCartesiaKeys = null,
+  fallbackNpcVoiceId = '',
+  emitSseEvent,
+  onBeatResolved = null,
+  skipDirectTts = false,
+  onAllBeatsSettled
+}) {
+  const seenBeatSigs = new Set();
+  const ttsPromises = [];
+  let nextBeatIndex = 1; // Beat 0 is always the Narrator opening beat
+  let fullHaikuRawText = '';
+
+  const parser = createIncrementalHaikuTupleParser((tuple) => {
+    const uid = Number(tuple[0]) || 1000;
+    const isNarratorMicroBeat = uid === 1000;
+    const emoji = isNarratorMicroBeat ? '' : String(tuple[1] || '').trim();
+    const spokenDialogue = isNarratorMicroBeat
+      ? String(tuple[1] || '').trim()
+      : String(tuple[2] || '').trim();
+    const privateThought = isNarratorMicroBeat
+      ? ''
+      : String(tuple[3] || '').trim();
+
+    if (!spokenDialogue) return;
+
+    const sig = computeBeatContentSigServer(uid, spokenDialogue);
+    if (seenBeatSigs.has(sig)) return;
+    seenBeatSigs.add(sig);
+
+    const beatIndex = nextBeatIndex++;
+    const resolvedBeat = resolveBeatVisualAndVoiceDirectServer({
+      uid,
+      emoji,
+      spokenDialogue,
+      privateThought,
+      npcReactions: npcReactionsRef.current,
+      codexVault,
+      fallbackNpcVoiceId
+    });
+
+    // Engine presentation hook (visual novel bubble + sprite qualifiers + engine-owned TTS relay)
+    if (typeof onBeatResolved === 'function') {
+      try {
+        onBeatResolved(resolvedBeat, { beatIndex, tuple });
+      } catch (_) {}
+      return;
+    }
+
+    // 1. Render visual novel bubble + sprite qualifiers on client immediately
+    emitSseEvent('beat', { beat_index: beatIndex, ...resolvedBeat });
+
+    // 2. Fire Cartesia realtime streaming TTS immediately (zero celeris-1 / analyze wait)
+    if (!skipDirectTts && resolvedBeat.ttsInput && resolvedBeat.voiceId) {
+      const ttsJob = synthesizeCartesiaSpeechServer({
+        ttsInput: resolvedBeat.ttsInput,
+        voiceId: resolvedBeat.voiceId,
+        emotionBucket: resolvedBeat.emotionBucket,
+        isNarrator: resolvedBeat.isNarrator,
+        customCartesiaKeys,
+        priority: 'high',
+        beatIndex,
+        prosody: resolvedBeat.prosody,
+        onStreamChunk: (pcmChunkBase64) => {
+          emitSseEvent('tts_chunk', { beat_index: beatIndex, uid, chunk: pcmChunkBase64 });
+        }
+      }).then((wavBase64) => {
+        if (wavBase64) {
+          emitSseEvent('tts_done', { beat_index: beatIndex, uid, wav_base64: wavBase64 });
+        }
+      });
+      ttsPromises.push(ttsJob);
+    }
+  });
+
+  for await (const chunk of haikuStreamIterable) {
+    const delta = typeof chunk === 'string'
+      ? chunk
+      : (chunk?.delta?.text || chunk?.text || chunk?.choices?.[0]?.delta?.content || '');
+    if (!delta) continue;
+    fullHaikuRawText += delta;
+    parser.push(delta);
+  }
+
+  await Promise.allSettled(ttsPromises);
+  if (typeof onAllBeatsSettled === 'function') {
+    onAllBeatsSettled(fullHaikuRawText);
+  }
+  return fullHaikuRawText;
 }
 
 async function generateAndCacheCharacterPortraitMidStream({
@@ -14037,6 +14521,14 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     const unknownToRealSnap = campaignContext?.unknownToRealSnapshot || GLOBAL_UNKNOWN_TO_REAL_NAME_MAP || {};
     const currentPhaseStr = fullStats?.full_stats?.campaign_phase || 'Prologue';
 
+    // Single-pass turn metadata: the Cerebras tail (npc_reactions / emergent_npcs) is now the ONLY
+    // source of per-beat visual qualifiers and emergent NPC profiles — no celeris-1 round-trip.
+    const npcReactionsRef = { current: {} };
+    const emergentNpcProfilesRef = { current: {} };
+    const fallbackNpcVoiceId = (CARTESIA_VOICES.find(v => v.cartesia_id !== NARRATOR_EXCLUSIVE_CARTESIA_ID && v.gender === 'female')
+      || CARTESIA_VOICES.find(v => v.cartesia_id !== NARRATOR_EXCLUSIVE_CARTESIA_ID)
+      || {}).cartesia_id || '';
+
     const computeSigLocal = (uidVal, textVal) => opusBeatStreamModule
       ? opusBeatStreamModule.computeBeatContentSig(uidVal, textVal)
       : computeBeatContentSigServer(uidVal, textVal);
@@ -14249,7 +14741,6 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       const beatIndex = record.beatIndex;
       const beatSig = record.sig;
       if (beatIndex === 0) beat0CameraText = cleanText;
-      const priorBeatForContext = lastDispatchedBeatText;
       if (cleanText) lastDispatchedBeatText = cleanText;
 
       const meta = resolveStreamBeatMeta(uid);
@@ -14282,7 +14773,6 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         }
       });
 
-      const textForMicroEnricher = cleanText || `(Silent inner thought: ${combinedThought})`;
       const allowCelerisEnrichForBeat = opusBeatStreamModule
         ? opusBeatStreamModule.shouldEnrichBeatWithCeleris(uid)
         : (!isNarrator && uid >= 1002);
@@ -14293,38 +14783,29 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
           startBeatTtsForKnownUid({ beatIndex, beatSig, uid, speakerName, species, role, instantProsody, isNarrator });
         }
 
-        // Parallel Single-Beat Celeris-1 Micro-Enricher ONLY for non-Narrator beats (Narrator UID 1000 never needs tags!)
-        if (allowCelerisEnrichForBeat && (resolveProviderKeyPool('celeris', activeCelerisKey).length > 0 || resolveCerebrasKeyPool(activeCerebrasKey).length > 0)) {
-          const enrichTask = runSingleBeatCelerisEnricher({
-            mode: 'known',
-            beatIndex,
+        // 3A. Zero-LLM beat visual resolution (<1ms from memory): Cerebras npc_reactions tail +
+        //     emoji fallback. No celeris-1 micro-enricher call is made for narrated beats anymore.
+        if (allowCelerisEnrichForBeat) {
+          const resolvedBeat = resolveBeatVisualAndVoiceDirectServer({
             uid,
-            speaker: speakerName,
             emoji,
-            text: textForMicroEnricher,
-            beat0Text: beat0CameraText,
-            priorBeatText: priorBeatForContext,
-            activeCelerisKey,
-            activeCerebrasKey,
-            promptCacheKey: buildCerebrasPromptCacheKey('enricher', getRequestCampaignIdServer(req))
-          })
-            .then(enriched => {
-              if (!enriched) return;
-              emitMidStreamSseOrBroadcast({
-                beat_enrich: {
-                  beat_index: beatIndex,
-                  beat_sig: beatSig,
-                  uid,
-                  qualifiers: enriched.qualifiers || '',
-                  is_moving: typeof enriched.is_moving === 'boolean' ? enriched.is_moving : undefined,
-                  visual_impact: enriched.visual_impact || 'none',
-                  sticker_anim: enriched.sticker_anim || 'pop'
-                }
-              });
-            })
-            .catch(() => {});
-          if (beatIndex <= 2) urgentStreamTasks.push(enrichTask);
-          else backgroundAssetTasks.push(enrichTask);
+            spokenDialogue: cleanText,
+            privateThought: combinedThought,
+            npcReactions: npcReactionsRef.current,
+            codexVault: codexSnap,
+            fallbackNpcVoiceId
+          });
+          emitMidStreamSseOrBroadcast({
+            beat_enrich: {
+              beat_index: beatIndex,
+              beat_sig: beatSig,
+              uid,
+              qualifiers: resolvedBeat.qualifiers,
+              is_moving: resolvedBeat.is_moving,
+              visual_impact: resolvedBeat.visual_impact,
+              sticker_anim: resolvedBeat.sticker_anim
+            }
+          });
         }
 
         // Parallel Leonardo 1:1 Portrait Generation if missing (never blocks [DONE])
@@ -14357,40 +14838,41 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
           backgroundAssetTasks.push(portraitTask);
         }
       } else if (allowCelerisEnrichForBeat) {
-        // 3B. Brand-New Unseen Emergent UID (1012+): Micro-resolve gender/name/face/voice via Celeris-1, then chain Cartesia TTS + Leonardo Portrait!
+        // 3B. Brand-New Emergent UID: identity/face/voice already arrived in the Cerebras tail
+        //     (emergent_npcs). Zero LLM calls — resolve from memory, then Cartesia TTS + portrait.
         const emergentTask = (async () => {
-          const enriched = await runSingleBeatCelerisEnricher({
-            mode: 'emergent',
-            beatIndex,
-            uid,
-            speaker: speakerName,
-            emoji,
-            text: textForMicroEnricher,
-            beat0Text: beat0CameraText,
-            priorBeatText: priorBeatForContext,
-            activeCelerisKey,
-            activeCerebrasKey,
-            promptCacheKey: buildCerebrasPromptCacheKey('enricher', getRequestCampaignIdServer(req))
-          });
+          const profile = emergentNpcProfilesRef.current[String(uid)]
+            || Object.values(GLOBAL_CHARACTER_CODEX_VAULT || {}).find(v => v && Number(v.uid) === uid)
+            || null;
 
-          if (enriched) {
-            if (enriched.name && !isInvalidOrEmotionCharacterNameServer(enriched.name) && isUnknownCharacterName(enriched.name)) {
-              speakerName = stripEmojisAndClean(enriched.name);
+          if (profile) {
+            if (profile.name && !isInvalidOrEmotionCharacterNameServer(profile.name) && isUnknownCharacterName(profile.name)) {
+              speakerName = stripEmojisAndClean(profile.name);
             }
-            if (enriched.species) species = expandEmergentSpecies(enriched.species);
-            if (enriched.role) role = expandEmergentRole(enriched.role);
-            if (enriched.icon) icon = extractPureEmojiGlyphServer(enriched.icon, '👤');
+            if (profile.species) species = expandEmergentSpecies(profile.species);
+            if (profile.role) role = expandEmergentRole(profile.role);
+            if (profile.icon) icon = extractPureEmojiGlyphServer(profile.icon, '👤');
           }
+
+          const resolvedBeat = resolveBeatVisualAndVoiceDirectServer({
+            uid,
+            emoji,
+            spokenDialogue: cleanText,
+            privateThought: combinedThought,
+            npcReactions: npcReactionsRef.current,
+            codexVault: codexSnap,
+            fallbackNpcVoiceId
+          });
 
           const voiceProfile = resolveCharacterCartesiaVoiceProfile(
             speakerName,
             species,
-            `${role} ${enriched?.gender || ''}`,
+            `${role} ${profile?.gender || ''}`,
             instantProsody.emotionBucket,
             {
               uid,
-              voice_id: enriched?.tts_voice_id,
-              pitch: enriched?.tts_pitch
+              voice_id: profile?.tts_voice_id || resolvedBeat.voiceId || undefined,
+              pitch: profile?.tts_pitch
             },
             uid
           );
@@ -14401,7 +14883,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
             species,
             role,
             icon,
-            face_description: enriched?.face_description || '',
+            face_description: profile?.face_description || '',
             cartesia_voice_id: voiceProfile.voice_id,
             cartesia_pitch: voiceProfile.pitch
           };
@@ -14416,18 +14898,18 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
               species,
               role,
               icon,
-              qualifiers: enriched?.qualifiers || '',
-              is_moving: typeof enriched?.is_moving === 'boolean' ? enriched.is_moving : undefined,
-              face_description: enriched?.face_description || '',
-              visual_impact: enriched?.visual_impact || 'none',
-              sticker_anim: enriched?.sticker_anim || 'pop',
+              qualifiers: resolvedBeat.qualifiers,
+              is_moving: resolvedBeat.is_moving,
+              face_description: profile?.face_description || '',
+              visual_impact: resolvedBeat.visual_impact,
+              sticker_anim: resolvedBeat.sticker_anim,
               tts_voice_id: voiceProfile.voice_id,
               tts_pitch: voiceProfile.pitch
             }
           });
 
-          // Emergent NPC: voice arrives with celeris-1, but the PCM relay still opens immediately so
-          // the client can pre-buffer this beat the moment the first frame lands.
+          // Emergent NPC: the voice arrived with the Cerebras tail (emergent_npcs), so the PCM relay
+          // opens immediately and the client pre-buffers this beat from the first frame.
           const emergentBeatStream = (!isSilentThoughtOnly && cleanText)
             ? openBeatPcmStream({ beatIndex, beatSig, uid, voiceProfile, instantProsody })
             : null;
@@ -14462,7 +14944,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
               uid,
               speciesHint: species,
               roleHint: role,
-              faceDescHint: enriched?.face_description || '',
+              faceDescHint: profile?.face_description || '',
               currentPhase: currentPhaseStr,
               leonardoApiKey: activeLeonardoKey,
               campaignCodexSnapshot: codexSnap
@@ -14474,7 +14956,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
                   species,
                   role,
                   icon,
-                  face_description: enriched?.face_description || '',
+                  face_description: profile?.face_description || '',
                   cartesia_voice_id: voiceProfile.voice_id,
                   cartesia_pitch: voiceProfile.pitch,
                   url
@@ -14771,6 +15253,11 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     if (!prePassOutcome.ok) throw prePassOutcome.error;
     const cerebrasPrePass = prePassOutcome.value;
 
+    // Hydrate the Cerebras tail once: per-beat visual reactions feed the zero-LLM resolver and
+    // emergent NPC profiles are already persisted into the codex by the pre-pass itself.
+    npcReactionsRef.current = cerebrasPrePass?.npc_reactions_by_uid || {};
+    emergentNpcProfilesRef.current = cerebrasPrePass?.emergent_npcs || {};
+
     if (!isStartCommand && cerebrasPrePass?.verdict === '1_STAR') {
       try { upstreamAbortController.abort(); } catch (_) {}
       const posture = cerebrasPrePass.active_action
@@ -14846,96 +15333,73 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     const lastErrText = openedOpus.lastErrText || '';
 
     if (!upstream && !asyncIterableStream) {
-      console.error(`[EMTF Haiku ${THREEROUTER_MODEL} All Keys/Variants Exhausted]: ${lastErrText}`);
-      res.write('data: ' + JSON.stringify({ stream_error: `EMTF Haiku ${THREEROUTER_MODEL} failed: ${lastErrText}` }) + '\n\n');
-      res.end();
-      return;
+      // Recovery: the turn still runs strictly 1 Cerebras pre-pass + 1 Haiku dialogue stream.
+      // Re-open Haiku once through the unified kernel and push its tuples straight into the
+      // zero-LLM resolver + engine presentation pipeline (no celeris-1, no /api/rpg/analyze).
+      console.warn(`[EMTF Haiku ${THREEROUTER_MODEL} Primary Open Failed — single-pass recovery]: ${lastErrText}`);
+      const recoveryTuples = [];
+      try {
+        const recovery = await executeOneCerebrasOneHaikuTurnServer({
+          isStartCommand,
+          priorStage: priorStageForTurn,
+          prePassPlan: cerebrasPrePass,
+          haikuSystemPrompt: immutableSystemPromptText,
+          haikuUserPrompt: flatUserPromptString,
+          cerebrasKey: activeCerebrasKey,
+          anthropicKey: threerouterKeyPool[0],
+          customCartesiaKeys: cartesiaApiKey,
+          fallbackNpcVoiceId,
+          abortSignal: upstreamAbortController.signal,
+          skipDirectTts: true,
+          emitSseEvent: (eventName, payload) => {
+            // turn_state is written explicitly below; Beat 0 goes through the presentation pipeline.
+            if (eventName === 'beat' && payload?.beat_index === 0 && payload?.spokenDialogue) {
+              dispatchCompletedTupleMidStream([1000, payload.spokenDialogue]);
+            }
+          },
+          onBeatResolved: (resolvedBeat) => {
+            const tuple = resolvedBeat.uid === 1000
+              ? [1000, resolvedBeat.spokenDialogue]
+              : [resolvedBeat.uid, resolvedBeat.emotion || '', resolvedBeat.spokenDialogue, resolvedBeat.privateThought || ''];
+            recoveryTuples.push(tuple);
+            dispatchCompletedTupleMidStream(tuple);
+          }
+        });
+
+        if (!res.writableEnded && !res.destroyed) {
+          const recoveryScreenplay = '[D]: ' + JSON.stringify(recoveryTuples) + '\n[TURN_JSON]: ' + JSON.stringify(recovery.turnJson);
+          let recoveryTurnId = null;
+          if (campaignContext?.registerResolvedTurn) {
+            recoveryTurnId = await campaignContext.registerResolvedTurn({
+              turnJson: recovery.turnJson,
+              screenplay: recoveryScreenplay,
+              prepassMeta: prepassMetaPayload
+            });
+          }
+          if (recoveryTurnId) {
+            res.write('data: ' + JSON.stringify({ turn_resolution: { id: recoveryTurnId, turnJson: recovery.turnJson } }) + '\n\n');
+          }
+          res.write('data: ' + JSON.stringify({
+            turn_state: { turn_json: recovery.turnJson, source: recovery.source, ...recovery.finalizerPayload }
+          }) + '\n\n');
+          res.write('data: ' + JSON.stringify({ token: recoveryScreenplay }) + '\n\n');
+          res.write('data: ' + JSON.stringify({ opus_done: true }) + '\n\n');
+          res.write('data: [DONE]\n\n');
+          res.end();
+        }
+        return;
+      } catch (recoveryErr) {
+        console.error(`[EMTF Haiku ${THREEROUTER_MODEL} All Keys/Variants Exhausted]: ${lastErrText} | ${recoveryErr.message || recoveryErr}`);
+        res.write('data: ' + JSON.stringify({ stream_error: `EMTF Haiku ${THREEROUTER_MODEL} failed: ${lastErrText}` }) + '\n\n');
+        res.end();
+        return;
+      }
     }
 
     let tokenCount = 0;
     let cacheReadTokens = 0;
     let cacheWriteTokens = 0;
 
-    let scannedUpToCursor = -1;
-    let dArrayClosed = false;
-
-    const scanIncrementalStreamForTuplesFallback = () => {
-      if (dArrayClosed) return;
-      const dIdx = accumulatedStreamText.indexOf('[D]:');
-      const trimmed = accumulatedStreamText.trimStart();
-      if (dIdx === -1 && !trimmed.startsWith('[[')) return;
-
-      const startAreaIdx = dIdx !== -1 ? dIdx + 4 : accumulatedStreamText.indexOf('[[');
-      if (startAreaIdx === -1) return;
-      const outerBracketIdx = accumulatedStreamText.indexOf('[', startAreaIdx);
-      if (outerBracketIdx === -1) return;
-
-      let cursor = scannedUpToCursor > outerBracketIdx ? scannedUpToCursor : (outerBracketIdx + 1);
-      const len = accumulatedStreamText.length;
-
-      while (cursor < len) {
-        while (cursor < len && /[\s,]/.test(accumulatedStreamText[cursor])) cursor++;
-        if (cursor >= len) break;
-        if (accumulatedStreamText[cursor] === ']') {
-          dArrayClosed = true;
-          scannedUpToCursor = cursor + 1;
-          break;
-        }
-        if (accumulatedStreamText[cursor] !== '[') {
-          cursor++;
-          continue;
-        }
-
-        const tupleStart = cursor;
-        let depth = 0;
-        let inStr = false;
-        let esc = false;
-        let tupleEnd = -1;
-
-        for (let j = tupleStart; j < len; j++) {
-          const ch = accumulatedStreamText[j];
-          if (esc) { esc = false; continue; }
-          if (ch === '\\') { esc = true; continue; }
-          if (ch === '"') { inStr = !inStr; continue; }
-          if (!inStr) {
-            if (ch === '[') depth++;
-            else if (ch === ']') {
-              depth--;
-              if (depth === 0) {
-                tupleEnd = j;
-                break;
-              }
-            }
-          }
-        }
-
-        if (tupleEnd === -1) break;
-        const rawSlice = accumulatedStreamText.slice(tupleStart, tupleEnd + 1);
-        scannedUpToCursor = tupleEnd + 1;
-        cursor = scannedUpToCursor;
-
-        let parsedTuple = null;
-        try {
-          parsedTuple = JSON.parse(rawSlice);
-        } catch (_) {
-          const m4 = rawSlice.match(/^\[\s*(\d{4})\s*,\s*"([^"]*)"\s*,\s*"([\s\S]*?)"\s*,\s*"([\s\S]*)"\s*\]$/);
-          if (m4) {
-            parsedTuple = [Number(m4[1]), m4[2], m4[3], m4[4]];
-          } else {
-            const m = rawSlice.match(/^\[\s*(\d{4})\s*,\s*(?:"([^"]*)"\s*,\s*)?"([\s\S]*)"\s*\]$/);
-            if (m) {
-              parsedTuple = m[2] !== undefined ? [Number(m[1]), m[2], m[3]] : [Number(m[1]), m[3]];
-            }
-          }
-        }
-        if (Array.isArray(parsedTuple) && parsedTuple.length >= 2) {
-          const tUid = Number(parsedTuple[0]);
-          if (tUid === 1000 || (tUid !== 1001 && allowedSpeakerUidSet.has(tUid))) {
-            dispatchCompletedTupleMidStream(parsedTuple);
-          }
-        }
-      }
-    };
 
     let partialScanCursor = -1;
     let partialOuterClosed = false;
@@ -15069,6 +15533,15 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       }
     };
 
+    // Zero-LLM incremental Haiku tuple parser: each `]`-closed [D]: tuple is dispatched the instant
+    // it lands, so the beat resolver + Cartesia stream start without waiting for the array to close.
+    const haikuTupleParser = createIncrementalHaikuTupleParser((parsedTuple) => {
+      const tUid = Number(parsedTuple[0]);
+      if (tUid === 1000 || (tUid !== 1001 && allowedSpeakerUidSet.has(tUid))) {
+        dispatchCompletedTupleMidStream(parsedTuple);
+      }
+    });
+
     const scanIncrementalStreamForTuples = (wireText = '') => {
       if (tupleScanner) {
         const completedTuples = tupleScanner.appendChunk(wireText);
@@ -15078,7 +15551,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
           }
         }
       } else {
-        scanIncrementalStreamForTuplesFallback();
+        haikuTupleParser.push(wireText);
       }
       scanPartialActiveBeatFromStream();
     };
@@ -15132,6 +15605,12 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
             delete turnJson.d.nr[uid];
           }
         }
+        // Single-pass turn metadata: turn_json + widget room state all come from the one Cerebras
+        // pre-pass, so narrated turns never need a second /api/rpg/analyze round-trip.
+        const cerebrasFinalizerPayload = cerebrasPrePass?.finalizer_payload
+          || hydrateTurnMetaFromCerebrasPlanServer(cerebrasPrePass, GLOBAL_CHARACTER_CODEX_VAULT).finalizerPayload;
+        await safeWriteSse('data: ' + JSON.stringify({ turn_state: { turn_json: turnJson, source: turnJsonResolution.source, ...cerebrasFinalizerPayload } }) + '\n\n');
+
         const tuples = [[1000, narrator], ...dialogue];
         const screenplay = '[D]: ' + JSON.stringify(tuples) + '\n[TURN_JSON]: ' + JSON.stringify(turnJson);
         const turnId = await campaignContext.registerResolvedTurn({ turnJson, screenplay, prepassMeta: prepassMetaPayload });
