@@ -3559,6 +3559,22 @@ function getCartesiaPersistentWsForKey(apiKey) {
   return conn;
 }
 
+// Fire-and-forget TLS/WebSocket pre-warm for the Cartesia connection pool. Called the moment a turn
+// starts (while the Cerebras pre-pass is still reasoning) so Beat 0 never pays cold-start handshake
+// latency once the first dialogue text arrives.
+function prewarmCartesiaWsPool(customCartesiaKeys = null) {
+  let keyPool = [];
+  try {
+    keyPool = resolveCartesiaKeyPool(customCartesiaKeys);
+  } catch (_) { return; }
+  for (const apiKey of keyPool.slice(0, 2)) {
+    if (!apiKey) continue;
+    try {
+      getCartesiaPersistentWsForKey(apiKey).ensureConnected(3500).catch(() => {});
+    } catch (_) {}
+  }
+}
+
 async function synthesizeCartesiaSpeechViaWebSocket({ transcript, cartesiaVoiceId, generationConfig, apiKey, timeoutMs = 8000 }) {
   for (const candidateModel of CARTESIA_MODEL_CANDIDATES) {
     const conn = getCartesiaPersistentWsForKey(apiKey);
@@ -3616,17 +3632,25 @@ async function synthesizeCartesiaSpeechStreamingViaWebSocket({ transcriptChunks,
   return null;
 }
 
-// Beat 0 narrator text is pushed to Cartesia in small sentence fragments so first audio fires long
-// before the full paragraph has been tokenised (mirrors the realtime TTS quickstart pattern).
-function splitNarratorTextForRealtimeStreaming(transcript = '', maxChunks = 8) {
+// Clause-first splitter for ultra-low Time-To-First-Audio across ALL beats (0..N). The opening
+// clause is emitted as soon as it reaches 24 characters at a natural break, so Cartesia starts
+// synthesizing (and emitting PCM) while the trailing clauses are still being pushed to the context.
+function splitTextForRealtimeStreaming(transcript = '', maxChunks = 8) {
   const text = String(transcript || '').trim();
   if (!text) return [];
-  if (text.length <= 110 || maxChunks <= 1) return [text];
+  if (text.length <= 28 || maxChunks <= 1) return [text];
 
-  const sentences = text.match(/[^.!?…]+(?:[.!?…]+["')\]]*|$)/g) || [text];
+  const firstClauseMatch = text.match(/^(.{24,85}?[,;—–…!?\.]+)\s+(.+)$/s);
   const chunks = [];
-  let current = '';
+  let remainder = text;
 
+  if (firstClauseMatch) {
+    chunks.push(firstClauseMatch[1].trim());
+    remainder = firstClauseMatch[2].trim();
+  }
+
+  const sentences = remainder.match(/[^.!?…]+(?:[.!?…]+["')\]]*|$)/g) || [remainder];
+  let current = '';
   const flush = () => {
     const trimmed = current.trim();
     if (trimmed) chunks.push(trimmed);
@@ -3640,7 +3664,7 @@ function splitNarratorTextForRealtimeStreaming(transcript = '', maxChunks = 8) {
       current = sentence;
       continue;
     }
-    if ((current.length + sentence.length + 1) > 140) {
+    if ((current.length + sentence.length + 1) > 95 && chunks.length < maxChunks - 1) {
       flush();
       current = sentence;
     } else {
@@ -3649,29 +3673,40 @@ function splitNarratorTextForRealtimeStreaming(transcript = '', maxChunks = 8) {
   }
   flush();
 
-  if (chunks.length <= maxChunks) return chunks;
+  return chunks.length > 0 ? chunks.slice(0, maxChunks) : [text];
+}
 
-  // Re-balance into at most maxChunks near-equal pieces when the paragraph is extremely long
-  const perChunk = Math.ceil(text.length / maxChunks);
-  const balanced = [];
-  let cursor = 0;
-  while (cursor < text.length && balanced.length < maxChunks) {
-    let end = Math.min(text.length, cursor + perChunk);
-    if (end < text.length) {
-      const nextBreak = text.slice(end, end + 24).search(/[.!?,;:\s]/);
-      if (nextBreak !== -1) end += nextBreak;
-    }
-    const slice = text.slice(cursor, end).trim();
-    if (slice) balanced.push(slice);
-    cursor = end;
+// Backwards-compatible alias: the narrator-specific name predates multi-beat streaming.
+const splitNarratorTextForRealtimeStreaming = splitTextForRealtimeStreaming;
+
+// 0ms emoji -> Cartesia emotion fast path. Lets a beat resolve its emotion straight from the
+// Character Codex emoji without waiting on celeris-1 micro-enrichment.
+const EMOJI_TO_CARTESIA_EMOTION = new Map([
+  ['😂', 'happy'], ['😄', 'happy'], ['😊', 'happy'], ['😁', 'happy'], ['🥳', 'happy'], ['😏', 'proud'],
+  ['😤', 'proud'], ['👑', 'proud'], ['😎', 'proud'],
+  ['😡', 'angry'], ['🤬', 'angry'], ['😠', 'angry'], ['💢', 'angry'],
+  ['😱', 'panicked'], ['😨', 'panicked'], ['😰', 'anxious'], ['💦', 'anxious'], ['😬', 'anxious'],
+  ['😢', 'sad'], ['😭', 'sad'], ['🥺', 'sad'], ['😞', 'sad'], ['💔', 'sad'],
+  ['🤨', 'skeptical'], ['😒', 'skeptical'], ['🙄', 'skeptical'], ['😑', 'disgusted'], ['🤢', 'disgusted'],
+  ['😲', 'amazed'], ['🤯', 'amazed'], ['✨', 'amazed'], ['🤩', 'amazed'],
+  ['🤫', 'mysterious'], ['🔮', 'mysterious'], ['😈', 'mysterious'], ['🖤', 'mysterious'],
+  ['💪', 'determined'], ['🔥', 'determined'], ['⚔️', 'determined']
+]);
+
+function mapEmojiToCartesiaEmotion(emojiStr = '') {
+  const clean = String(emojiStr || '').trim();
+  if (!clean) return '';
+  for (const [emoji, emotion] of EMOJI_TO_CARTESIA_EMOTION.entries()) {
+    if (clean.includes(emoji)) return emotion;
   }
-  return balanced.length > 0 ? balanced : [text];
+  return '';
 }
 
 function deriveInstantCartesiaProsody(rawText = '', emoji = '', isNarrator = false) {
   const cleanText = String(rawText || '').trim();
   const bucket = isNarrator ? 'neutral' : resolveEmotionBucket(`${emoji || ''} ${cleanText}`);
-  const emotion = mapEmotionToCartesiaEmotion(bucket, isNarrator);
+  const emojiEmotion = isNarrator ? '' : mapEmojiToCartesiaEmotion(emoji);
+  const emotion = emojiEmotion || mapEmotionToCartesiaEmotion(bucket, isNarrator);
 
   if (isNarrator) {
     // Beat 0 (UID 1000 Narrator): zero Cerebras tags or XML wrapping/unwrapping needed
@@ -3757,9 +3792,11 @@ async function synthesizeCartesiaSpeechServer({
 
   const configuredTtsConcurrency = Number(process.env.TTS_MAX_CONCURRENCY ?? 3);
   const maxProPlanSlots = Number.isInteger(configuredTtsConcurrency) ? Math.max(1, Math.min(16, configuredTtsConcurrency)) : 3;
+  // Every beat now streams in parallel, so widen the pro-plan slot budget in step with the key pool.
+  const effectiveSlots = Math.max(maxProPlanSlots, keyPool.length * 3);
 
   if (IN_FLIGHT_TTS_PROMISES.has(cacheKey)) {
-    if (priority === 'high') promoteQueuedCartesiaTaskToHigh(cacheKey, cacheKey, beatIndex, maxProPlanSlots);
+    if (priority === 'high') promoteQueuedCartesiaTaskToHigh(cacheKey, cacheKey, beatIndex, effectiveSlots);
     return IN_FLIGHT_TTS_PROMISES.get(cacheKey);
   }
 
@@ -3771,7 +3808,7 @@ async function synthesizeCartesiaSpeechServer({
     TTS_AUDIO_MEMORY_CACHE.set(cacheKey, wavBase64);
   };
 
-  const synthTask = runWithCartesiaProPlanPriority(priority, maxProPlanSlots, cacheKey, plainCacheKey, beatIndex, async () => {
+  const synthTask = runWithCartesiaProPlanPriority(priority, effectiveSlots, cacheKey, plainCacheKey, beatIndex, async () => {
     if (TTS_AUDIO_MEMORY_CACHE.has(cacheKey)) return TTS_AUDIO_MEMORY_CACHE.get(cacheKey);
 
     if (!Number.isInteger(cartesiaRoundRobinCursor) || cartesiaRoundRobinCursor < 0) {
@@ -3787,13 +3824,13 @@ async function synthesizeCartesiaSpeechServer({
       if (!apiKey) continue;
 
       // 1. Primary: Persistent Multiplexed Cartesia Realtime WebSocket (/tts/websocket)
-      //    Beat 0 (narrator) uses the realtime streaming context: incremental continue:true text pushes,
+      //    Every beat can use the realtime streaming context: incremental continue:true text pushes,
       //    PCM frames relayed to the client the moment Cartesia synthesizes them.
       const useRealtimeStreaming = Boolean(onStreamChunk);
       try {
         const wavBase64 = useRealtimeStreaming
           ? await synthesizeCartesiaSpeechStreamingViaWebSocket({
-            transcriptChunks: splitNarratorTextForRealtimeStreaming(converted.transcript),
+            transcriptChunks: splitTextForRealtimeStreaming(converted.transcript),
             cartesiaVoiceId,
             generationConfig: converted.generation_config,
             apiKey,
@@ -13927,13 +13964,9 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
 
     const selectedCerebrasEffort = normalizeCerebrasReasoningEffort(reasoningEffort || 'high');
 
-    // Pre-warm Cartesia persistent WebSocket + launch uncached POV scenery CONCURRENTLY with Stage-1 Pre-Pass!
-    const warmCartesiaKeys = resolveCartesiaKeyPool(cartesiaApiKey);
-    if (warmCartesiaKeys.length > 0) {
-      try {
-        getCartesiaPersistentWsForKey(warmCartesiaKeys[0]).ensureConnected(4000).catch(() => {});
-      } catch (_) {}
-    }
+    // Pre-warm the whole Cartesia WebSocket pool CONCURRENTLY with Stage-1 Pre-Pass so Beat 0 never
+    // pays TLS/WebSocket handshake latency after the pre-pass hands back its narration text.
+    prewarmCartesiaWsPool(cartesiaApiKey);
 
     const urgentStreamTasks = [];
     const backgroundAssetTasks = [];
@@ -14096,32 +14129,25 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       return { isNarrator, eid, existingCodexByUid, isKnownUid, speakerName, species, role, icon };
     };
 
-    const startBeatTtsForKnownUid = ({ beatIndex, beatSig, uid, speakerName, species, role, instantProsody, isNarrator }) => {
-      const dedupKey = `${beatIndex}::${beatSig}`;
-      if (prewarmedTtsBySigKey.has(dedupKey)) {
-        return prewarmedTtsBySigKey.get(dedupKey);
-      }
-
-      const voiceProfile = resolveCharacterCartesiaVoiceProfile(speakerName, species, role, instantProsody.emotionBucket, { uid }, uid);
-      // Stream Beats 0 & 1 via Cartesia Realtime WebSocket so Beat 1 starts playing at 0ms when Beat 0 finishes!
-      const useRealtimeStream = (beatIndex === 0 && isNarrator) || (beatIndex === 1 && !isNarrator);
+    // Opens the PCM relay channel for ONE beat. Every beat (0..N) streams: frames are forwarded the
+    // instant Cartesia synthesizes them and the client buffers each beat until its HUD line renders,
+    // so Beats #1..#N are already pre-buffered while Beat #0 is still speaking.
+    const openBeatPcmStream = ({ beatIndex, beatSig, uid, voiceProfile, instantProsody }) => {
       let streamSeq = 0;
       let streamFrameCount = 0;
-      if (useRealtimeStream) {
-        emitMidStreamSseOrBroadcast({
-          beat_tts_stream_start: {
-            beat_index: beatIndex,
-            beat_sig: beatSig,
-            uid,
-            voice_id: voiceProfile.voice_id,
-            pitch: voiceProfile.pitch,
-            sample_rate: 24000,
-            tts_input: instantProsody.taggedInput
-          }
-        });
-      }
-      const onStreamChunk = useRealtimeStream
-        ? (pcmBuf) => {
+      emitMidStreamSseOrBroadcast({
+        beat_tts_stream_start: {
+          beat_index: beatIndex,
+          beat_sig: beatSig,
+          uid,
+          voice_id: voiceProfile.voice_id,
+          pitch: voiceProfile.pitch,
+          sample_rate: 24000,
+          tts_input: instantProsody?.taggedInput || ''
+        }
+      });
+      return {
+        onChunk: (pcmBuf) => {
           streamFrameCount++;
           emitMidStreamSseOrBroadcast({
             beat_tts_stream_chunk: {
@@ -14133,8 +14159,31 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
               audio_base64: pcmBuf.toString('base64')
             }
           });
+        },
+        emitStreamEnd: () => {
+          emitMidStreamSseOrBroadcast({
+            beat_tts_stream_end: {
+              beat_index: beatIndex,
+              beat_sig: beatSig,
+              uid,
+              frame_count: streamFrameCount,
+              streamed: streamFrameCount > 0
+            }
+          });
         }
-        : null;
+      };
+    };
+
+    const startBeatTtsForKnownUid = ({ beatIndex, beatSig, uid, speakerName, species, role, instantProsody, isNarrator }) => {
+      const dedupKey = `${beatIndex}::${beatSig}`;
+      if (prewarmedTtsBySigKey.has(dedupKey)) {
+        return prewarmedTtsBySigKey.get(dedupKey);
+      }
+
+      const voiceProfile = resolveCharacterCartesiaVoiceProfile(speakerName, species, role, instantProsody.emotionBucket, { uid }, uid);
+      // Known UID (Narrator or cached codex entry): voice + pitch + emotion resolve synchronously in
+      // 0ms from the Character Codex, so Cartesia starts streaming before celeris-1 is even dispatched.
+      const beatStream = openBeatPcmStream({ beatIndex, beatSig, uid, voiceProfile, instantProsody });
 
       const ttsTask = synthesizeCartesiaSpeechServer({
         ttsInput: instantProsody.taggedInput,
@@ -14142,47 +14191,28 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
         emotionBucket: instantProsody.emotionBucket,
         isNarrator,
         customCartesiaKeys: cartesiaApiKey,
-        priority: beatIndex <= 2 ? 'high' : 'background',
+        // Beats #0..#5 stay 'high' so the opening exchange is never starved behind background slots.
+        priority: beatIndex <= 5 ? 'high' : 'background',
         beatIndex,
         prosody: {
           emotion: instantProsody.emotion,
           volume: instantProsody.volume,
           speed: instantProsody.speed
         },
-        onStreamChunk
+        onStreamChunk: beatStream.onChunk
       })
         .then(audioBase64 => {
-          if (useRealtimeStream) {
-            emitMidStreamSseOrBroadcast({
-              beat_tts_stream_end: {
-                beat_index: beatIndex,
-                beat_sig: beatSig,
-                uid,
-                frame_count: streamFrameCount,
-                streamed: streamFrameCount > 0
-              }
-            });
-          }
+          beatStream.emitStreamEnd();
           return emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, audioBase64);
         })
         .catch(() => {
-          if (useRealtimeStream) {
-            emitMidStreamSseOrBroadcast({
-              beat_tts_stream_end: {
-                beat_index: beatIndex,
-                beat_sig: beatSig,
-                uid,
-                frame_count: streamFrameCount,
-                streamed: streamFrameCount > 0
-              }
-            });
-          }
+          beatStream.emitStreamEnd();
           return emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, null);
         });
 
       prewarmedTtsBySigKey.set(dedupKey, ttsTask);
       if (beatIndex === 0) beat0TtsPromise = ttsTask;
-      if (beatIndex <= 2) urgentStreamTasks.push(ttsTask);
+      if (beatIndex <= 5) urgentStreamTasks.push(ttsTask);
       else backgroundAssetTasks.push(ttsTask);
       return ttsTask;
     };
@@ -14396,6 +14426,11 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
             }
           });
 
+          // Emergent NPC: voice arrives with celeris-1, but the PCM relay still opens immediately so
+          // the client can pre-buffer this beat the moment the first frame lands.
+          const emergentBeatStream = (!isSilentThoughtOnly && cleanText)
+            ? openBeatPcmStream({ beatIndex, beatSig, uid, voiceProfile, instantProsody })
+            : null;
           const ttsProm = (!isSilentThoughtOnly && cleanText)
             ? synthesizeCartesiaSpeechServer({
               ttsInput: instantProsody.taggedInput,
@@ -14403,15 +14438,22 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
               emotionBucket: instantProsody.emotionBucket,
               isNarrator: false,
               customCartesiaKeys: cartesiaApiKey,
-              priority: beatIndex <= 2 ? 'high' : 'background',
+              priority: beatIndex <= 5 ? 'high' : 'background',
               beatIndex,
               prosody: {
                 emotion: instantProsody.emotion,
                 volume: instantProsody.volume,
                 speed: instantProsody.speed
-              }
-            }).then(audioBase64 => emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, audioBase64))
-              .catch(() => emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, null))
+              },
+              onStreamChunk: emergentBeatStream.onChunk
+            }).then(audioBase64 => {
+              emergentBeatStream.emitStreamEnd();
+              return emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, audioBase64);
+            })
+              .catch(() => {
+                emergentBeatStream.emitStreamEnd();
+                return emitBeatTtsResultOrUnavailable(beatIndex, beatSig, uid, voiceProfile, instantProsody, null);
+              })
             : Promise.resolve(null);
 
           const portraitProm = resolveProviderKeyPool('leonardo', activeLeonardoKey).length > 0
@@ -14455,7 +14497,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
           backgroundAssetTasks.push(portraitProm);
         })();
 
-        if (beatIndex <= 2) urgentStreamTasks.push(emergentTask);
+        if (beatIndex <= 5) urgentStreamTasks.push(emergentTask);
         else backgroundAssetTasks.push(emergentTask);
       }
     };
