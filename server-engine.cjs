@@ -697,10 +697,12 @@ if (!fs.existsSync(PUBLIC_DIR)) fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 if (!fs.existsSync(SNAPSHOTS_DIR)) fs.mkdirSync(SNAPSHOTS_DIR, { recursive: true });
 
-// ==================== API ENDPOINTS: PATEWAY CLAUDE OPUS 5.5 (DIALOGUE) + CEREBRAS GPT-OSS-120B + CELERIS (celeris-1 / Decision) ====================
-const THREEROUTER_API_URL = process.env.PATEWAY_API_URL || process.env.THREEROUTER_API_URL || 'https://api.pateway.ai/v1/messages';
-let THREEROUTER_API_KEY = process.env.PATEWAY_API_KEY || process.env.THREEROUTER_API_KEY || 'sk-ptw-132WnNu0lnw83cV90RuQDBTRnh0MQQAxdNqS0';
-const THREEROUTER_MODEL = process.env.PATEWAY_MODEL || process.env.THREEROUTER_MODEL || 'claude-opus-5-5';
+// ==================== API ENDPOINTS: EMTF CLAUDE HAIKU 5.5 (DIALOGUE ONLY) + CEREBRAS GPT-OSS-120B (AUTHORITATIVE [TURN_JSON]) + CELERIS (celeris-1 / Decision) ====================
+// Claude Haiku 5.5 (served by emtf) writes ONLY the [D]: dialogue beats. Every [TURN_JSON] end
+// state/radar is authored by Cerebras GPT-OSS in the Stage-1 pre-pass.
+const THREEROUTER_API_URL = process.env.EMTF_API_URL || process.env.PATEWAY_API_URL || process.env.THREEROUTER_API_URL || 'https://emtf.aipm9527.online/v1/messages';
+let THREEROUTER_API_KEY = process.env.EMTF_API_KEY || process.env.PATEWAY_API_KEY || process.env.THREEROUTER_API_KEY || 'sk-8K7QgcLzAA5cZWAIjWVyR0bl7DbXGvgX8nd7vv8JJOyVnl8e';
+const THREEROUTER_MODEL = process.env.EMTF_MODEL || process.env.PATEWAY_MODEL || process.env.THREEROUTER_MODEL || 'claude-haiku-5-5';
 const PATEWAY_API_URL = THREEROUTER_API_URL;
 const PATEWAY_MODEL = THREEROUTER_MODEL;
 const OPUS_MODEL = THREEROUTER_MODEL;
@@ -749,9 +751,10 @@ function normalizeCredentialList(value) {
 // ==================== CREDENTIAL PRECEDENCE: REQUEST + BROWSER DIALOG FIRST, .ENV AS FALLBACK ====================
 const ENV_CREDENTIALS = Object.freeze({
   threerouter: normalizeCredentialList([
+    process.env.EMTF_API_KEY,
     process.env.PATEWAY_API_KEY,
     process.env.THREEROUTER_API_KEY,
-    'sk-ptw-132WnNu0lnw83cV90RuQDBTRnh0MQQAxdNqS0'
+    'sk-8K7QgcLzAA5cZWAIjWVyR0bl7DbXGvgX8nd7vv8JJOyVnl8e'
   ]),
   cerebras: normalizeCredentialList([
     process.env.CEREBRAS_API_KEY,
@@ -891,7 +894,7 @@ function parseOpusStreamChunk(data) {
   if (data.type === 'error' || data.success === false || data.error) {
     const errMsg = typeof data.error === 'string'
       ? data.error
-      : (data.error?.message || data.message || data.error?.type || 'Pateway stream error');
+      : (data.error?.message || data.message || data.error?.type || 'EMTF stream error');
     return { text: '', error: String(errMsg) };
   }
 
@@ -6180,64 +6183,27 @@ function sanitizeOpusStageServer(rawStage, { knownCastUids = new Set(), knownLan
   return next;
 }
 
-function resolveOpusAuthoredTurnJsonServer({
-  rawStreamText = '',
-  fallbackTurnJson = null,
+function resolveCerebrasAuthoredTurnJsonServer({
+  plannedTurnJson = null,
   priorStage = {},
-  fullStats = {},
-  narrator = '',
-  speakerUids = [],
   opening = false
 }) {
-  const fallback = fallbackTurnJson && typeof fallbackTurnJson === 'object' && fallbackTurnJson.s && fallbackTurnJson.d
-    ? fallbackTurnJson
+  const fallback = plannedTurnJson && typeof plannedTurnJson === 'object' && plannedTurnJson.s && plannedTurnJson.d
+    ? plannedTurnJson
     : { s: { z: priorStage.z, spot: priorStage.spot, c: [] }, d: { t: 0 } };
-  // The opening chamber state is server-authored; Opus only writes the opening beats.
+  // The opening chamber state is server-authored; Haiku only writes the opening beats.
   if (opening) return { turnJson: fallback, source: 'opening-server-authored' };
-
-  const raw = extractOpusTurnJsonRawServer(rawStreamText);
-  if (!raw) return { turnJson: fallback, source: 'cerebras-fallback-missing' };
-
-  // 1. Best case: Opus's object passes the same strict turn validation as the referee plan.
-  try {
-    const validated = validateGptTurnServer(
-      { turn_json: raw, narrator, speaker_uids: speakerUids },
-      priorStage,
-      fullStats,
-      false
-    );
-    return { turnJson: validated, source: 'opus' };
-  } catch (err) {
-    console.warn('[Opus TURN_JSON] strict validation rejected: ' + (err?.message || err));
+  // The Stage-1 Cerebras plan is already strictly validated by runCerebrasSequentialPrePass, so it
+  // is the authoritative end state. Haiku never writes or corrects [TURN_JSON].
+  if (!plannedTurnJson || typeof plannedTurnJson !== 'object' || !plannedTurnJson.s || !plannedTurnJson.d) {
+    return { turnJson: fallback, source: 'cerebras-plan-missing' };
   }
-
-  // 2. Radar authority: keep the referee's deltas, but adopt Opus's post-beats stage/radar.
-  const fallbackStage = fallback.s || {};
-  const priorCast = (priorStage.c || []).map(c => Number(Array.isArray(c) ? c[0] : c?.uid)).filter(Number.isInteger);
-  const fallbackCast = (fallbackStage.c || []).map(p => Number(p?.uid)).filter(Number.isInteger);
-  const knownLandmarkUids = [...(priorStage.lm || []), ...(fallbackStage.lm || [])]
-    .map(p => Number(Array.isArray(p) ? p[0] : p?.uid))
-    .filter(Number.isInteger);
-  const knownSoundUids = [...(priorStage.snd || []), ...(fallbackStage.snd || [])]
-    .map(p => Number(Array.isArray(p) ? p[0] : p?.uid))
-    .filter(Number.isInteger);
-  const stage = sanitizeOpusStageServer(raw.s || raw.stage || raw.r || raw.radar, {
-    knownCastUids: new Set([...priorCast, ...fallbackCast]),
-    knownLandmarkUids: new Set(knownLandmarkUids),
-    knownSoundUids: new Set(knownSoundUids)
-  });
-  if (!stage) return { turnJson: fallback, source: 'cerebras-fallback-invalid' };
-
-  const deltas = { ...(fallback.d || {}) };
-  const normZone = z => String(z || '').trim().replace(/\s+/g, ' ').toLowerCase();
-  if (normZone(stage.z) === normZone(priorStage.z)) delete deltas.l;
-  else deltas.l = stage.z;
-  return { turnJson: { s: stage, d: deltas }, source: 'opus-stage' };
+  return { turnJson: plannedTurnJson, source: 'cerebras' };
 }
 
 // ==================== GPT-OSS TURN RESOLVER ====================
 const CEREBRAS_SEQUENTIAL_PREPASS_PROMPT = `You are the High-Reasoning Tactical Referee, Comedy Living-World Director, Physics Engine, Economy Accountant, and Epistemic Watchdog for a hilarious Konosuba-style dark-fantasy comedy anime RPG.
-You resolve the turn's causal outcome, world state (turn_json), vivid 5-senses camera narration (narrator), and who speaks aloud (speaker_uids). Claude Opus 5.5 writes the NPC spoken dialogue and private thoughts from your plan.
+You resolve the turn's causal outcome, world state (turn_json), vivid 5-senses camera narration (narrator), and who speaks aloud (speaker_uids). Claude Haiku 5.5 writes ONLY the NPC spoken dialogue and private thoughts from your plan — your turn_json is the final authoritative end state, so resolve it completely.
 
 LAWS YOU MUST ENFORCE:
 1. LIVING COMEDY + HARDCORE SSS-DIFFICULTY REALISM (1 turn = 1 primary physical action, ~2-4 seconds):
@@ -6267,7 +6233,7 @@ LAWS YOU MUST ENFORCE:
   • If the player tries to grab/drag or trick an NPC and gets resisted, NEVER end in a frozen stalemate! Resolve a lively physical comedy consequence (e.g., Lv.999 Coral squawks in panic and digs her heels in so hard she knocks over the messy filing desk, spilling loose scrolls onto the floor, or trips an audit buzzer, or creates a new tactical opening / leverage for the player!).
   • Calibrate gullibility realistically to IQ, mood & flaws: sharp veterans (IQ 120+) catch weak bluffs, whereas lazy/panicky/greedy NPCs (like IQ-82 Coral) genuinely sweat, get distracted by laziness/booze/fear of supervisors, slip up, or fall for clever bait!
 6. MANDATORY VOCAL NPCs ("speaker_uids") — DO NOT MUTE ENGAGED CHARACTERS:
-  • This is a voiced visual-novel comedy RPG! Whenever ANY awake, conscious, aware NPC is physically present on stage (especially when the Protagonist speaks, moves near them, waits beside them, touches/grabs them, or examines scene props), you MUST include their UID(s) in "speaker_uids" so Claude Opus 5.5 writes their spoken reaction!
+  • This is a voiced visual-novel comedy RPG! Whenever ANY awake, conscious, aware NPC is physically present on stage (especially when the Protagonist speaks, moves near them, waits beside them, touches/grabs them, or examines scene props), you MUST include their UID(s) in "speaker_uids" so Claude Haiku 5.5 writes their spoken reaction!
   • NEVER have an awake interacting NPC silently roll their eyes or resist in silence! ONLY output "speaker_uids": [] when NO alive NPC is present and aware (solo empty room, everyone is dead/unconscious/asleep, or Protagonist is hiding unseen in stealth).
 7. ECONOMY, TRADES, ITEMS & REALITY CHECK:
   • 1 GP = 10 SP = 100 CP. Record exact coin/item transfers in "d" and "math_deltas".
@@ -8510,7 +8476,7 @@ function stripActionsAndRolesForOpusHistory(rawAssistantText = '') {
 }
 
 function getStaticAstraSystemPrompt() {
-  return `You're claude-opus-5-5, the Master Comedy & Dark-Fantasy Dialogue Writer for an interactive anime visual novel RPG.
+  return `You're claude-haiku-5-5 (served by emtf), the Master Comedy & Dark-Fantasy Dialogue Writer for an interactive anime visual novel RPG.
 You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras GPT-OSS ALREADY wrote the ultra-short single-sentence Beat 0 [1000, "..."] camera narration (<=16 words, the same length as your own micro-beats) ("Resolved observable scene"), which the server automatically prepends at Beat 0. Treat GPT-OSS's causal plan as fixed truth. NEVER repeat, paraphrase, or rewrite Beat 0, never execute actions for the player, and never speak for UID 1001. Use ONLY the explicitly allowed NPC speaker UIDs (plus optional very short interleaved UID 1000 micro-beats where timing demands it).
 {ONLY UID 1002 (the Catgirl Angel, secret true name Coral) and UID 1001 (Protagonist) are canon, with 100% dynamic infinite possibilities: Protagonist can choose ANY path!}
 <Genre: Hilarious Konosuba-Style Comedy, Dark Fantasy, Isekai, SSS Difficulty, Necromancy, Human Supremacy, Demons>
@@ -8537,17 +8503,10 @@ You do NOT resolve turn physics or write opening Beat 0 narration — Cerebras G
   - IN THE MORTAL WORLD (Mw:1): Angels cannot bring full power inside—her wings & halo VANISH and she drops to Lv.1 (75/75 HP, 30/30 MP, only Divine Heal & Animal Talk)! She can only go back to Heaven if UID 1001 alone defeats the Demon King. Under stress she craves alcohol and loudly insists she's an almighty angel while looking completely delusional under Human Supremacy.
 • HUMAN SUPREMACY & NECROMANCY: Humans assume UID 1001 is an ordinary Human unless they witness black magic; Bonus Luck grants weird comedic breaks (except respected female recruits turn out secretly weak with ridiculous flaws). Everyone in Mw:1 has the Real-Time World Newspaper skill.
 
-Output EXACTLY two lines, in this order, with no markdown fences, no commentary and no Beat 0 recap:
-1) [D]: [[NPC_UID, "emotion emoji", "full multi-sentence spoken dialogue", "optional private thought"]] — optionally weaving [1000, "short 3-14 word beat"] between NPC tuples. Even with only ONE beat, ALWAYS keep double outer+inner brackets [[...]]. If Allowed speaker UIDs is empty [], output [D]: [].
-2) [TURN_JSON]: {"s":{...},"d":{...}} — the AUTHORITATIVE end-of-turn state, emitted at the VERY BOTTOM after your final beat (never before [D]:, never inside a dialogue string).
+Output EXACTLY one line, with no markdown fences, no commentary and no Beat 0 recap:
+[D]: [[NPC_UID, "emotion emoji", "full multi-sentence spoken dialogue", "optional private thought"]] — optionally weaving [1000, "short 3-14 word beat"] between NPC tuples. Even with only ONE beat, ALWAYS keep double outer+inner brackets [[...]]. If Allowed speaker UIDs is empty [], output [D]: [].
 
-🔒 [TURN_JSON] IS YOURS (the referee's plan is only a baseline):
-  • Write it LAST, from the beats you actually wrote — where the Protagonist physically is, who is still in the room, who/what they face, and every landmark or sound actually present at the final beat. Never copy a plan your own beats contradicted, and never invent characters, landmarks, sounds, exits or a room change that no beat established.
-  • The radar/stage ("s") is the tactical map the player sees. "s.c" MUST list EVERY character still in the room at the end of the last beat (reuse their uid/dist/dir; add "n" for anyone new), "s.lm" every landmark present, "s.snd" off-stage sounds only, "s.lv" anyone who left, and "s.z"/"s.spot" the exact zone and where the Protagonist stands.
-  • Only these "dist" values are legal: close, near, far, outside. Only these "dir" values are legal: ahead, behind, left, right, ahead-left, ahead-right, behind-left, behind-right.
-  • "d" carries ONLY what changed this turn (omit zero/unchanged fields) and MUST always include "t" (whole elapsed minutes, 0 for a sub-minute exchange).
-
-${getTurnJsonContractBodyServer()}`;
+🚫 YOU NEVER WRITE [TURN_JSON]: the end-of-turn state and tactical radar are authored by Cerebras GPT-OSS, not by you. NEVER emit [TURN_JSON], [GAME_STATE_JSON], [SCENE_RADAR_JSON], [RADAR_POS] or any state object — the server appends Cerebras's authoritative [TURN_JSON] after your beats. Keep every beat consistent with the resolved scene, room, cast and landmarks you were given.`;
 }
 
 function getTurnJsonContractBodyServer() {
@@ -9228,7 +9187,7 @@ async function pipeUpstreamSseWithLifecycle({
     }
   } catch (streamErr) {
     if (!clientClosed && !res.writableEnded) {
-      await safeWriteSse('data: ' + JSON.stringify({ stream_error: streamErr.message || `Pateway ${THREEROUTER_MODEL} stream interrupted.` }) + '\n\n');
+      await safeWriteSse('data: ' + JSON.stringify({ stream_error: streamErr.message || `EMTF ${THREEROUTER_MODEL} stream interrupted.` }) + '\n\n');
       res.end();
     }
   } finally {
@@ -13260,7 +13219,7 @@ function executeThreerouterHttpVariant({
     };
 
     const failRequestOrStream = (reason) => {
-      const msg = String(reason || 'Pateway request failed.');
+      const msg = String(reason || 'EMTF request failed.');
       clearAllTimers();
       if (!settledOpen) {
         settledOpen = true;
@@ -13278,7 +13237,7 @@ function executeThreerouterHttpVariant({
     };
 
     firstTimer = setTimeout(() => {
-      failRequestOrStream(`Pateway response timed out after ${Math.round(firstByteTimeoutMs / 1000)}s`);
+      failRequestOrStream(`EMTF response timed out after ${Math.round(firstByteTimeoutMs / 1000)}s`);
     }, firstByteTimeoutMs);
 
     const req = transport.request({
@@ -13292,8 +13251,7 @@ function executeThreerouterHttpVariant({
         ...(isAnthropicMessages
           ? {
               'x-api-key': activeKey,
-              'anthropic-version': '2023-06-01',
-              'anthropic-beta': 'prompt-caching-2024-07-25'
+              'anthropic-version': '2023-06-01'
             }
           : {
               'Authorization': 'Bearer ' + activeKey
@@ -13354,18 +13312,18 @@ function executeThreerouterHttpVariant({
           let jsonBody = null;
           try { jsonBody = JSON.parse(rawBody); } catch (_) {}
           if (!jsonBody || jsonBody.error) {
-            const errMsg = jsonBody?.error?.message || (typeof jsonBody?.error === 'string' ? jsonBody.error : rawBody.slice(0, 200) || 'Invalid JSON from Pateway');
+            const errMsg = jsonBody?.error?.message || (typeof jsonBody?.error === 'string' ? jsonBody.error : rawBody.slice(0, 200) || 'Invalid JSON from EMTF');
             return resolve({ errorText: String(errMsg) });
           }
           const parsedChunk = parseOpusStreamChunk(jsonBody);
           if (parsedChunk.error) return resolve({ errorText: parsedChunk.error });
-          if (!parsedChunk.text) return resolve({ errorText: 'Pateway returned empty message content.' });
+          if (!parsedChunk.text) return resolve({ errorText: 'EMTF returned empty message content.' });
           async function* singleShotIterable() {
             yield jsonBody;
           }
           resolve({ asyncIterableStream: singleShotIterable() });
         });
-        res.on('error', (e) => failRequestOrStream(e?.message || 'Pateway response read error'));
+        res.on('error', (e) => failRequestOrStream(e?.message || 'EMTF response read error'));
         return;
       }
 
@@ -13376,7 +13334,7 @@ function executeThreerouterHttpVariant({
         if (idleTimer) clearTimeout(idleTimer);
         if (streamEnded) return;
         idleTimer = setTimeout(() => {
-          failRequestOrStream(`Pateway SSE stalled mid-stream (${Math.round(idleTimeoutMs / 1000)}s idle)`);
+          failRequestOrStream(`EMTF SSE stalled mid-stream (${Math.round(idleTimeoutMs / 1000)}s idle)`);
         }, idleTimeoutMs);
       };
 
@@ -13411,7 +13369,7 @@ function executeThreerouterHttpVariant({
           if (!settledOpen) {
             settledOpen = true;
             cleanupAbortListener();
-            resolve({ errorText: 'Pateway SSE closed with [DONE] before sending any dialogue.' });
+            resolve({ errorText: 'EMTF SSE closed with [DONE] before sending any dialogue.' });
           }
           return;
         }
@@ -13451,7 +13409,7 @@ function executeThreerouterHttpVariant({
               if (!settledOpen) {
                 settledOpen = true;
                 cleanupAbortListener();
-                resolve({ errorText: 'Pateway SSE finished without dialogue content.' });
+                resolve({ errorText: 'EMTF SSE finished without dialogue content.' });
               }
             }, 750);
           }
@@ -13479,7 +13437,7 @@ function executeThreerouterHttpVariant({
         if (!settledOpen) {
           settledOpen = true;
           cleanupAbortListener();
-          resolve({ errorText: 'Pateway SSE ended without sending dialogue content.' });
+          resolve({ errorText: 'EMTF SSE ended without sending dialogue content.' });
         }
       });
 
@@ -13493,20 +13451,20 @@ function executeThreerouterHttpVariant({
           if (!settledOpen) {
             settledOpen = true;
             cleanupAbortListener();
-            resolve({ errorText: 'Pateway SSE connection closed before sending dialogue.' });
+            resolve({ errorText: 'EMTF SSE connection closed before sending dialogue.' });
           }
         }
       });
 
       res.on('error', (err) => {
         if (streamEnded) return;
-        failRequestOrStream(err?.message || 'Pateway SSE socket error');
+        failRequestOrStream(err?.message || 'EMTF SSE socket error');
       });
     });
 
     req.on('error', (err) => {
       if (streamEnded) return;
-      failRequestOrStream(err?.message || 'Pateway network connection error');
+      failRequestOrStream(err?.message || 'EMTF network connection error');
     });
 
     req.write(payloadBuf);
@@ -13514,14 +13472,12 @@ function executeThreerouterHttpVariant({
   });
 }
 
-// Opus dialogue writer runs with ZERO reasoning: no thinking field, no thinking budget and no
-// output_config effort anywhere in the payload. The PRIMARY attempt is the prompt-cached streaming
-// variant, which lets the proxy cache the long system/user prefixes while Opus writes dialogue
-// directly. It carries `anthropic-beta: prompt-caching-2024-07-25` (set in
-// executeThreerouterHttpVariant) and a 30s first-byte budget so the proxy can warm up instead of
-// timing out the turn. The field-free "Stream · No Thinking Field" variant, a plain SSE retry and
-// the non-streaming JSON call stay behind it as fallbacks only.
-async function openThreerouterOpusNoReasoningStream({
+// Haiku dialogue writer always streams with thinking DISABLED: every Anthropic payload carries
+// `"stream": true`, `"thinking": {"type": "disabled"}` and a cache_control'd system block
+// (`[{"type":"text","text":...,"cache_control":{"type":"ephemeral"}}]`), matching emtf's
+// /v1/messages contract. The PRIMARY attempt reuses the prompt-cached user prefix; the plain
+// streaming retry stays behind it as a fallback only (no non-streaming call is ever made).
+async function openEmtfHaikuDialogueStream({
   activeKey,
   systemPrompt = '',
   userContentBlocks = null,
@@ -13547,54 +13503,43 @@ async function openThreerouterOpusNoReasoningStream({
       : b
   );
 
+  const anthropicSystemBlocks = [{ type: 'text', text: resolvedSystem, cache_control: OPUS_CACHE_CONTROL }];
+  const buildAnthropicBody = (contentBlocks) => ({
+    model: THREEROUTER_MODEL,
+    max_tokens: 4096,
+    stream: true,
+    thinking: { type: 'disabled' },
+    system: anthropicSystemBlocks,
+    messages: [{ role: 'user', content: contentBlocks }]
+  });
+  const primaryUserBlocks = cachedUserBlocks.length > 0
+    ? cachedUserBlocks
+    : [{ type: 'text', text: resolvedUserStr }];
+
   const variants = isAnthropicEndpoint
     ? [
-        // Primary: prompt-cached field-free stream. No thinking or reasoning fields are sent, so
-        // Opus writes dialogue directly while the cacheable prefixes are still reused.
+        // Primary: prompt-cached streaming variant. Thinking is explicitly disabled.
         ...(!patewayAnthropicCacheUnsupported
           ? [{
-              label: `Pateway-Anthropic-SSE-Cached (${THREEROUTER_MODEL} · Stream · No Thinking)`,
+              label: `EMTF-Anthropic-SSE-Cached (${THREEROUTER_MODEL} · Stream · Thinking Disabled)`,
               stream: true,
               timeoutMs: 30000,
               isCacheTier: true,
-              body: {
-                model: THREEROUTER_MODEL,
-                max_tokens: 4096,
-                system: [{ type: 'text', text: resolvedSystem, cache_control: OPUS_CACHE_CONTROL }],
-                messages: [{ role: 'user', content: cachedUserBlocks }],
-                stream: true
-              }
+              body: buildAnthropicBody(primaryUserBlocks)
             }]
           : []),
-        // Fallback: field-free stream, no thinking field anywhere in the payload.
+        // Fallback: same streaming contract, flat user turn (still thinking-disabled + cached system).
         {
-          label: `Pateway-Anthropic-SSE (${THREEROUTER_MODEL} · Stream · No Thinking Field)`,
+          label: `EMTF-Anthropic-SSE (${THREEROUTER_MODEL} · Stream · Thinking Disabled)`,
           stream: true,
           timeoutMs: 14000,
-          body: {
-            model: THREEROUTER_MODEL,
-            max_tokens: 4096,
-            system: resolvedSystem,
-            messages: [{ role: 'user', content: resolvedUserStr }],
-            stream: true
-          }
-        },
-        {
-          label: `Pateway-Anthropic-JSON (${THREEROUTER_MODEL} · Non-Stream)`,
-          stream: false,
-          timeoutMs: 22000,
-          body: {
-            model: THREEROUTER_MODEL,
-            max_tokens: 4096,
-            system: resolvedSystem,
-            messages: [{ role: 'user', content: resolvedUserStr }]
-          }
+          body: buildAnthropicBody([{ type: 'text', text: resolvedUserStr }])
         }
       ]
     : [
-        // OpenAI-compatible endpoints get NO reasoning fields at all: Opus never thinks here.
+        // OpenAI-compatible endpoints always stream; thinking fields are Anthropic-only.
         {
-          label: `Pateway-OpenAI-SSE (${THREEROUTER_MODEL} · Stream)`,
+          label: `EMTF-OpenAI-SSE (${THREEROUTER_MODEL} · Stream)`,
           stream: true,
           timeoutMs: 12000,
           body: {
@@ -13602,17 +13547,6 @@ async function openThreerouterOpusNoReasoningStream({
             messages: flatMessages,
             max_tokens: 4096,
             stream: true
-          }
-        },
-        {
-          label: `Pateway-OpenAI-JSON (${THREEROUTER_MODEL} · Non-Stream)`,
-          stream: false,
-          timeoutMs: 18000,
-          body: {
-            model: THREEROUTER_MODEL,
-            messages: flatMessages,
-            max_tokens: 4096,
-            stream: false
           }
         }
       ];
@@ -13637,7 +13571,7 @@ async function openThreerouterOpusNoReasoningStream({
       patewayAnthropicCacheUnsupported = true;
     }
 
-    lastErrText = result.errorText || 'Pateway request failed';
+    lastErrText = result.errorText || 'EMTF Haiku request failed';
     console.warn(`[${variant.label} Failed]: ${String(lastErrText).slice(0, 220)}`);
     if (result.httpStatus === 401 || result.httpStatus === 403) {
       return { authFailed: true, lastErrText };
@@ -13900,7 +13834,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     const threerouterKeyPool = resolveThreerouterKeyPool(candidateThreerouterKey);
     if (threerouterKeyPool.length === 0) {
       return res.status(401).json({
-        error: 'No Pateway API key configured. Open 🔑 API Keys and paste your Pateway key (sk-ptw-...), or set PATEWAY_API_KEY in .env.'
+        error: 'No EMTF API key configured. Open 🔑 API Keys and paste your EMTF key (sk-...), or set EMTF_API_KEY in .env.'
       });
     }
 
@@ -14644,11 +14578,11 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     }
     turnParts.push('Resolved observable scene: ' + JSON.stringify(planHead.narrator));
     turnParts.push('Allowed speaker UIDs: ' + JSON.stringify(planHead.speakerUids));
-    // The planned [TURN_JSON] baseline (and any authorized name reveals inside it) only exists once
-    // Stage-1 finishes; a head-start turn lets Opus author its own corrected [TURN_JSON] instead.
+    // Cerebras owns the final [TURN_JSON] (and any authorized name reveals inside it); Haiku only
+    // writes beats that must stay consistent with it.
     if (planHead.turnJson) {
       turnParts.push('Authorized name reveals: ' + JSON.stringify(planHead.turnJson?.d?.nr || {}));
-      turnParts.push('[CEREBRAS PLANNED TURN_JSON — BASELINE ONLY. Correct it to match the beats you actually write (final room, cast, facing, landmarks, sounds), then emit the corrected object as the final [TURN_JSON] line.]: ' + JSON.stringify(planHead.turnJson));
+      turnParts.push('[CEREBRAS-AUTHORED TURN_JSON — FINAL end state for this turn. Write beats that match it; never restate or replace it.]: ' + JSON.stringify(planHead.turnJson));
     }
 
     const composedUserTurn = turnParts.length > 0
@@ -14768,9 +14702,9 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       for (let k = 0; k < threerouterKeyPool.length; k++) {
         const activeKey = threerouterKeyPool[k];
         const maskedKey = activeKey.length > 14 ? activeKey.slice(0, 7) + '...' + activeKey.slice(-4) : 'sk-ptw-*';
-        console.log(`[Pateway Key ${k + 1}/${threerouterKeyPool.length} (${maskedKey})]: Generating ${THREEROUTER_MODEL} ([D]: dialogue only)...`);
+        console.log(`[EMTF Haiku Key ${k + 1}/${threerouterKeyPool.length} (${maskedKey})]: Generating ${THREEROUTER_MODEL} ([D]: dialogue only)...`);
 
-        const opened = await openThreerouterOpusNoReasoningStream({
+        const opened = await openEmtfHaikuDialogueStream({
           activeKey,
           systemPrompt: immutableSystemPromptText,
           userContentBlocks,
@@ -14786,7 +14720,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
             variantLabel: opened.variantLabel || 'pateway-sse'
           };
         }
-        lastOpenErrText = opened.lastErrText || 'Pateway connection failed';
+        lastOpenErrText = opened.lastErrText || 'EMTF Haiku connection failed';
       }
       return { lastErrText: lastOpenErrText };
     })();
@@ -14870,8 +14804,8 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
     const lastErrText = openedOpus.lastErrText || '';
 
     if (!upstream && !asyncIterableStream) {
-      console.error(`[Pateway ${THREEROUTER_MODEL} All Keys/Variants Exhausted]: ${lastErrText}`);
-      res.write('data: ' + JSON.stringify({ stream_error: `Pateway ${THREEROUTER_MODEL} failed: ${lastErrText}` }) + '\n\n');
+      console.error(`[EMTF Haiku ${THREEROUTER_MODEL} All Keys/Variants Exhausted]: ${lastErrText}`);
+      res.write('data: ' + JSON.stringify({ stream_error: `EMTF Haiku ${THREEROUTER_MODEL} failed: ${lastErrText}` }) + '\n\n');
       res.end();
       return;
     }
@@ -15136,23 +15070,19 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       },
       beforeSendDone: async (safeWriteSse) => {
         const narrator = immediateNarratorBeat0 || clampShortOpusNarrationServer(scrubUnintroducedNamesFromNarratorBeatServer(cerebrasPrePass.narrator), 16, 140);
-        // Opus emits [TURN_JSON] at the very bottom of the beats — cut it before parsing dialogue tuples.
+        // Defensive: strip any [TURN_JSON] Haiku might emit — Cerebras owns the end-of-turn state.
         const dialogueWireText = String(accumulatedStreamText || '').split(/\[TURN_JSON\]/i)[0];
         const dialogue = validateNpcDialogueServer(dialogueWireText, cerebrasPrePass.speakerUids, isStartCommand, narrator);
-        // Opus's bottom-of-beats [TURN_JSON] is authoritative for the end-of-turn state & radar;
-        // the Cerebras plan is only the baseline/fallback, so stale rooms and phantom NPCs can't reach the UI.
-        const opusTurnResolution = resolveOpusAuthoredTurnJsonServer({
-          rawStreamText: accumulatedStreamText,
-          fallbackTurnJson: cerebrasPrePass.turnJson,
+        // Cerebras authors the [TURN_JSON] end state & radar; Haiku writes dialogue beats only, so
+        // nothing Haiku streams can overwrite the authoritative state.
+        const turnJsonResolution = resolveCerebrasAuthoredTurnJsonServer({
+          plannedTurnJson: cerebrasPrePass.turnJson,
           priorStage: priorStageForTurn,
-          fullStats,
-          narrator,
-          speakerUids: cerebrasPrePass.speakerUids,
           opening: isStartCommand
         });
-        const turnJson = opusTurnResolution.turnJson;
-        if (opusTurnResolution.source !== 'opus') {
-          console.log('[Opus TURN_JSON] End state source: ' + opusTurnResolution.source);
+        const turnJson = turnJsonResolution.turnJson;
+        if (turnJsonResolution.source !== 'cerebras') {
+          console.log('[Cerebras TURN_JSON] End state source: ' + turnJsonResolution.source);
         }
         for (const [uid, name] of Object.entries(turnJson.d?.nr || {})) {
           const exactName = typeof name === 'string' && name.trim();
@@ -15189,7 +15119,7 @@ const handleClaudesonnetChatStream = async (req, res, campaignContext = null) =>
       }
     });
 
-    console.log(`[Pateway ${THREEROUTER_MODEL} (${activeVariantLabel}) Stream Complete]: ${tokenCount} chunks | ⚡ Cache HIT: ${cacheReadTokens} | 📝 Cache WRITE: ${cacheWriteTokens}`);
+    console.log(`[EMTF Haiku ${THREEROUTER_MODEL} (${activeVariantLabel}) Stream Complete]: ${tokenCount} chunks | ⚡ Cache HIT: ${cacheReadTokens} | 📝 Cache WRITE: ${cacheWriteTokens}`);
     return;
   } catch (err) {
     console.error('[Chat Stream 500]', err);
@@ -15251,7 +15181,7 @@ function validateNpcDialogueServer(rawText, speakerUids, isStartCommand = false,
 
   if (!Array.isArray(tuples)) {
     console.warn('[Opus Dialogue Validation Failed]: non-array output:', cleaned.slice(0, 400));
-    throw new Error('Claude Opus 5.5 returned invalid dialogue format. Retry the turn; no story action was applied.');
+    throw new Error('Claude Haiku 5.5 returned invalid dialogue format. Retry the turn; no story action was applied.');
   }
   const allowedSet = new Set(speakerUids.map(Number));
   const forbiddenTagsRx = /\[(?:TURN_JSON|GAME_STATE_JSON|SOL_STATE_JSON|REFEREE_TAG|REFEREE_HEADER|NPC|NPC_DELTA|OPUS_NPC|BGM)\]/i;
@@ -15273,7 +15203,7 @@ function validateNpcDialogueServer(rawText, speakerUids, isStartCommand = false,
     if (Array.isArray(row) && row.length === 1 && Array.isArray(row[0])) row = row[0];
     if (!Array.isArray(row) || row.length < 2) {
       console.warn('[Opus Dialogue Validation Failed]: malformed tuple:', JSON.stringify(row).slice(0, 220), '| raw:', cleaned.slice(0, 300));
-      throw new Error('Claude Opus 5.5 returned a malformed dialogue tuple. Retry the turn; no story action was applied.');
+      throw new Error('Claude Haiku 5.5 returned a malformed dialogue tuple. Retry the turn; no story action was applied.');
     }
     const uid = Number(row[0]);
     if (uid === 1001) continue;
@@ -15282,7 +15212,7 @@ function validateNpcDialogueServer(rawText, speakerUids, isStartCommand = false,
         ? row[2]
         : (typeof row[1] === 'string' ? row[1] : '');
       if (forbiddenTagsRx.test(rawNarr)) {
-        throw new Error('Claude Opus 5.5 returned invalid narration tag. Retry the turn; no story action was applied.');
+        throw new Error('Claude Haiku 5.5 returned invalid narration tag. Retry the turn; no story action was applied.');
       }
       const scrubbed = scrubUnintroducedNamesFromNarratorBeatServer(rawNarr);
       const shortNarr = clampShortOpusNarrationServer(scrubbed, 16, 140);
@@ -15290,13 +15220,13 @@ function validateNpcDialogueServer(rawText, speakerUids, isStartCommand = false,
         normalized.push([1000, shortNarr]);
       }
       if (normalized.length > 12) {
-        throw new Error('Claude Opus 5.5 exceeded the maximum dialogue beat count. Retry the turn; no story action was applied.');
+        throw new Error('Claude Haiku 5.5 exceeded the maximum dialogue beat count. Retry the turn; no story action was applied.');
       }
       continue;
     }
     if (!allowedSet.has(uid)) {
       console.warn(`[Opus Dialogue Validation Failed]: unauthorized speaker UID ${row[0]} (allowed: ${JSON.stringify([...allowedSet])})`);
-      throw new Error('Claude Opus 5.5 tried to speak for an unauthorized character. Retry the turn; no story action was applied.');
+      throw new Error('Claude Haiku 5.5 tried to speak for an unauthorized character. Retry the turn; no story action was applied.');
     }
     let emoji = '🙂';
     let speech = '';
@@ -15314,15 +15244,15 @@ function validateNpcDialogueServer(rawText, speakerUids, isStartCommand = false,
       !(speech.trim() || thought.trim())
     ) {
       console.warn('[Opus Dialogue Validation Failed]: invalid tuple fields:', JSON.stringify(row).slice(0, 200));
-      throw new Error('Claude Opus 5.5 returned invalid dialogue content. Retry the turn; no story action was applied.');
+      throw new Error('Claude Haiku 5.5 returned invalid dialogue content. Retry the turn; no story action was applied.');
     }
     normalized.push(thought.trim() ? [uid, emoji, speech, thought] : [uid, emoji, speech]);
     if (normalized.length > 12) {
-      throw new Error('Claude Opus 5.5 exceeded the maximum dialogue beat count. Retry the turn; no story action was applied.');
+      throw new Error('Claude Haiku 5.5 exceeded the maximum dialogue beat count. Retry the turn; no story action was applied.');
     }
   }
   if (isStartCommand && normalized.length === 0) {
-    throw new Error('Claude Opus 5.5 returned empty opening dialogue. Retry the turn; no story action was applied.');
+    throw new Error('Claude Haiku 5.5 returned empty opening dialogue. Retry the turn; no story action was applied.');
   }
   return normalized;
 }
@@ -17823,8 +17753,8 @@ app.get('/api/health', (req, res) => {
   epidemic: credentials.epidemic
   },
   active_campaign_stores: CAMPAIGN_STORES.size,
-  anti_cheat_layers: '4-Layer Enforced (Server Pre-Flight Firewall + Cerebras gpt-oss-120b Sequential High-Reasoning Pre-Pass + Pateway claude-opus-5-5 Comedy Dialogue Director + Server-Authoritative Campaign Ledger)',
-  engine: `Pateway (${THREEROUTER_MODEL} · Anthropic Messages API /v1/messages) + Cerebras (${CEREBRAS_MODEL} · High Reasoning) + Celeris (${MERCURY_MODEL}) + Cartesia (${CARTESIA_MODEL}) + Leonardo AI (LCM Real-Time) + Epidemic Sound MCP`,
+  anti_cheat_layers: '4-Layer Enforced (Server Pre-Flight Firewall + Cerebras gpt-oss-120b Sequential High-Reasoning Pre-Pass & Authoritative TURN_JSON + emtf claude-haiku-5-5 Comedy Dialogue Director + Server-Authoritative Campaign Ledger)',
+  engine: `EMTF (${THREEROUTER_MODEL} · Anthropic Messages API /v1/messages) + Cerebras (${CEREBRAS_MODEL} · High Reasoning) + Celeris (${MERCURY_MODEL}) + Cartesia (${CARTESIA_MODEL}) + Leonardo AI (LCM Real-Time) + Epidemic Sound MCP`,
   dynamic_species_minted: Object.keys(GLOBAL_DYNAMIC_SPECIES_CACHE).length,
   master_architect: `Two-Stage Sequential Pre-Pass (${CEREBRAS_MODEL} High Reasoning -> Threerouter ${THREEROUTER_MODEL} Fast No-Reasoning Stream)`,
   lore_decorator: `Active (${CEREBRAS_MODEL} High-Reasoning State Reconciler + ${MERCURY_MODEL} Concurrent HUD Beat & Prosody Extractor)`,
@@ -17895,7 +17825,7 @@ module.exports = {
   finalizeEngineFallbacks,
   describeCredentialState,
   startStandaloneEngineServer,
-  // Opus bottom-of-beats [TURN_JSON] resolution (exposed for direct verification).
+  // Cerebras-authored [TURN_JSON] resolution (exposed for direct verification).
   extractOpusTurnJsonRawServer,
-  resolveOpusAuthoredTurnJsonServer
+  resolveCerebrasAuthoredTurnJsonServer
 };
