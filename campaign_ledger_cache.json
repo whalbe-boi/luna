@@ -131,5 +131,8 @@
     "flags": {}
   },
   "last_active_location": "Heavenly Reincarnation Chamber",
-  "player_true_name": "Whalberg"
+  "player_true_name": "Whalberg",
+  "_migrations": {
+    "purged_canonical_generic_collapse_v2": true
+  }
 }
