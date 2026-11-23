@@ -10502,7 +10502,9 @@
           }
           src.connect(stream.gain);
 
-          const startAt = Math.max(this.ctx.currentTime + (stream.chunkCount === 0 ? 0.05 : 0.015), stream.nextTime || 0);
+          // 15ms jitter cushion for every chunk (including the first) keeps consecutive beats gapless:
+          // each beat's opening frame is queued right behind the previous beat's last scheduled sample.
+          const startAt = Math.max(this.ctx.currentTime + 0.015, stream.nextTime || 0);
           src.start(startAt);
           stream.nextTime = startAt + audioBuffer.duration;
           stream.chunkCount++;
