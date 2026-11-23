@@ -16958,6 +16958,9 @@
         let streamRenderPending = false;
         let lastScannedLineCount = 0;
         let earlyAnalyzeAndTtsPromise = null;
+        // Turn-level tail authored by the single Cerebras pre-pass (turn_json + widget + room state).
+        // When the stream supplies it, narrated turns skip the extra /api/rpg/analyze round-trip.
+        let streamFinalizerPayload = null;
         let prepassMetaReceived = null;
         const streamPrewarmedAudioByBeatIndex = new Map();
         const streamPrewarmedTtsPromisesByBeatIndex = new Map();
@@ -17107,6 +17110,7 @@
 
         const triggerEarlyConcurrentAnalyzeAndTts = (dLineStorySlice, resolvedTurnId) => {
           if (earlyAnalyzeAndTtsPromise) return earlyAnalyzeAndTtsPromise;
+          if (streamFinalizerPayload) return Promise.resolve(streamFinalizerPayload);
           setPipelineStep('Assets', 'active', 'Preparing scene presentation...');
           earlyAnalyzeAndTtsPromise = fetch('/api/rpg/analyze', {
             method: 'POST',
@@ -17706,6 +17710,12 @@
                   continue;
                 }
 
+                // 4b. Single-pass turn metadata from the Cerebras pre-pass tail
+                if (json.turn_state) {
+                  streamFinalizerPayload = json.turn_state;
+                  continue;
+                }
+
                 // 5. Opus Stream Completion Signal (opus_done)
                 if (json.opus_done) {
                   window._activeStreamingBeatPreview = null;
@@ -18033,6 +18043,8 @@
           }
         };
 
+        // The one Cerebras pre-pass already streamed the turn-level tail, so narrated turns consume
+        // it directly instead of paying for a second celeris-1 finalizer round-trip.
         const analyzePromise = triggerEarlyConcurrentAnalyzeAndTts(fullStory, resolvedTurn?.id);
         analyzePromise
           .then(analyzeData => {
