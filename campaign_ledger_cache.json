@@ -39,7 +39,7 @@
       "player": {
         "x": 50,
         "y": 50,
-        "spot": "Before the Reincarnation Gate",
+        "spot": "Right in front of the Reincarnation Portal Gate",
         "facing_uid": null
       },
       "characters": [
@@ -47,11 +47,11 @@
           "uid": 1002,
           "name": "Catgirl Angel",
           "icon": "👼",
-          "dist": "near",
+          "dist": "close",
           "dir": "ahead",
-          "paces": 9,
+          "paces": 2,
           "x": 50,
-          "y": 19,
+          "y": 32,
           "facing_uid": null,
           "facing_name": "",
           "is_moving": false,
@@ -113,7 +113,7 @@
           "icon": "🏛️",
           "type": "poi",
           "is_important": false,
-          "state_tag": "Cluttered with loose scrolls",
+          "state_tag": "Collapsed, scrolls strewn",
           "description": ""
         }
       ],
@@ -131,8 +131,5 @@
     "flags": {}
   },
   "last_active_location": "Heavenly Reincarnation Chamber",
-  "player_true_name": "Whalberg",
-  "_migrations": {
-    "purged_canonical_generic_collapse_v2": true
-  }
+  "player_true_name": "Whalberg"
 }

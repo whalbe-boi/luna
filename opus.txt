@@ -31,7 +31,7 @@ Output EXACTLY one line, with no markdown fences, no commentary and no Beat 0 re
 
 🚫 YOU NEVER WRITE [TURN_JSON]: the end-of-turn state and tactical radar are authored by Cerebras GPT-OSS, not by you. NEVER emit [TURN_JSON], [GAME_STATE_JSON], [SCENE_RADAR_JSON], [RADAR_POS] or any state object — the server appends Cerebras's authoritative [TURN_JSON] after your beats. Keep every beat consistent with the resolved scene, room, cast and landmarks you were given.
 
-==================== USER INPUT (CAMPAIGN TURN 0) ====================
+==================== USER INPUT (CAMPAIGN TURN 1) ====================
 [CHR]:S:H;N:0%;Z:Heavenly Reincarnation Chamber;C:0CP;G:Tunic,Trousers,Boots,Tome
 [MEMORY]: [SNAP]=full world state at epoch start. Every later [Δ] lists ONLY entries changed since the previous turn; anything not listed keeps its latest value. [STAGE].lv=UIDs that left the room. [CAST-]=UIDs dropped from memory. "Key:-"=value cleared.
 [SNAP]:
@@ -41,11 +41,17 @@ Output EXACTLY one line, with no markdown fences, no commentary and no Beat 0 re
 [QUIRKS]:1002:Catgirl Angel(catgirl angel,IQ82[Lazy Klutz Angel / Future Alcoholic]|Speech:"Flustered catgirl slips ("nya?!", "mrrp!") when panicked")
 [STAGE]:{"spot":"Before the Reincarnation Gate","focus":1002,"c":[[1002,"near","ahead",999,false]],"lm":[[2001,"Reincarnation Portal Gate","far","ahead","intact"],[2002,"Class-Assignment Pedestal","close","left","intact"],[2003,"Messy Celestial Filing Desk","near","left","intact"]]}
 
-[Δ]:none
+E:/start
+S:[Scene: The pedestal flashes HUMAN NECROMANCER with crossed out HERO in red as the angel waves you. She slides a stack of dusty scrolls across the desk to hide the pedestal. Her coral wings twitch nervously behind her back.] [D]: [[1002,"😅","Ahaha, so, about that pedestal! It's totally just a clerical thing, a tiny little typo in the system, and the machine was being VERY dramatic about it. Human Necromancer is a COMPLETELY valid class, the Heavens just don't like to advertise it, nya?! Okay, maybe it's a bit of a typo-typo, but you're going to be FINE, you're going to be ABSOLUTELY FINE, so please stop staring at that red ink like that.","If he figures out I signed that form half-asleep, I'm going to be stuck doing paperwork until the next reincarnation cycle."],[1002,"😭","Look, the Gate is RIGHT there, see? Glowing, humming, super welcoming! Just walk through, the mortal world gets a fresh new hero, and I get to go back to my cloud and take a nice long nap. Maybe grab one little bottle of celestial wine for the road... nope, wait, that's not a bribe, that's a PROFESSIONAL EXPENSE! Nobody needs to write a report about any of this, mrrp!","Please don't ask for the file number. Please don't ask for the file number."],[1002,"😳","Okay, okay, FINE, I'll admit the stamp may have been applied with slightly less care than the paperwork deserved! But you have ZERO skill knowledge, which means you're basically a blank page, and blank pages are the best kind for an SSS world. You'll grow, you'll learn, you'll absolutely not die in the first ten minutes! Probably! Now go, GO, before the supervisor wakes up and asks why the gate has been glowing at me this long, nya?!","If he dies in the first five minutes, this is definitely not my fault and I am definitely not filling out the incident form."]]
+
+[Δ]:
+[STATE]:Env:"Active in Heavenly Reincarnation Chamber"|Act:"Standing before the Reincarnation Gate"|BGM:"playful whimsical comedic orchestral instrumental"
+[STAGE]:{"lm":[[2001,"Reincarnation Portal Gate","far","ahead","intact"],[2002,"Class-Assignment Pedestal","close","left","Assignment error"],[2003,"Messy Celestial Filing Desk","near","left","Cluttered with loose scrolls"]]}
 [TURN]:
-Opening: UID 1002 downplays the wrong class assignment and urges the player toward the gate. Do not introduce her by name or imply they crossed.
+[Protagonist Physical Action]: I walk very close to the Reincarnation Portal Gate.
 [CEREBRAS_HIGH_REASONING_DIRECTIVE (AUTHORITATIVE LOGIC & CAUSAL PLAN — OBEY STRICTLY IN [D]:)]
-• Referee Verdict & End Posture: 3_STARS | Standing before the Reincarnation Gate
-• Referee Reason: Campaign opening initialized at the Reincarnation Gate.
-Resolved observable scene: "The pedestal flashes HUMAN NECROMANCER with crossed out HERO in red as the angel waves you."
+• Referee Verdict & End Posture: 3_STARS | stepping forward cautiously
+• Referee Reason: Protagonist walked toward the gate, prompting movement and Angel’s clumsy reaction
+• Verified Causal Outcome: The hero steps up to the humming Reincarnation Gate, making its glow pulse louder. The Catgirl Angel lunges to shove him aside, toppling the messy celestial filing desk and scattering scrolls, which expose a hidden lever on the floor.
+Resolved observable scene: "The hero steps forward, and the Angel flails, toppling a dust‑laden scroll tower."
 Allowed speaker UIDs: [1002]
